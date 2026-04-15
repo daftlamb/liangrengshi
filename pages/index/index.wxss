@@ -41,7 +41,7 @@
   gap: 12rpx;
   padding: 20rpx 0;
 }
-.quick-icon { font-size: 44rpx; }
+.quick-icon { width: 44rpx; height: 44rpx; }
 .quick-label { font-size: 22rpx; color: #666666; }
 
 /* Category tabs */

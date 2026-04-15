@@ -5,10 +5,10 @@ const banners = [
 ]
 
 const quickLinks = [
-  { id: 1, icon: '🚗', label: '停车缴费' },
-  { id: 2, icon: '📍', label: '打卡积分' },
-  { id: 3, icon: '🎭', label: '活动报名' },
-  { id: 4, icon: '🗺️', label: '地图导览' },
+  { id: 1, icon: '/icons/parking.png', label: '停车缴费' },
+  { id: 2, icon: '/icons/stamp.png', label: '打卡积分' },
+  { id: 3, icon: '/icons/ticket.png', label: '活动报名' },
+  { id: 4, icon: '/icons/map.png', label: '地图导览' },
 ]
 
 const contents = [
