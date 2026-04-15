@@ -15,7 +15,7 @@
   <!-- Quick Links -->
   <view class="quick-grid">
     <view class="quick-item" wx:for="{{quickLinks}}" wx:key="id" bindtap="onQuickLinkTap" data-id="{{item.id}}">
-      <text class="quick-icon">{{item.icon}}</text>
+      <image class="quick-icon" src="{{item.icon}}" mode="aspectFit"></image>
       <text class="quick-label">{{item.label}}</text>
     </view>
   </view>
