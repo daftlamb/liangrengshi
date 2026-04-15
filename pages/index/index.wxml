@@ -1,4 +1,8 @@
 <view class="container">
+ <!-- Custom Nav Bar -->
+ <view class="custom-nav" style="padding-top:{{statusBarHeight}}px">
+  <image class="nav-logo" src="../../images/logo.png" mode="aspectFit"></image>
+ </view>
 
   <!-- KV Banner -->
   <swiper class="kv-swiper" autoplay indicator-dots indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#e8d5a3" circular>

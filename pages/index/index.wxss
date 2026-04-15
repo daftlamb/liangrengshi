@@ -105,3 +105,17 @@
   font-size: 22rpx;
   color: #aaaaaa;
 }
+
+.custom-nav {
+  background: #e8d5a3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding-bottom: 8px;
+}
+
+.nav-logo {
+  height: 28px;
+  width: 120px;
+}

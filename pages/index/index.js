@@ -8,6 +8,13 @@ Page({
     activeCategory: '全部',
     filteredContents: contents,
     allContents: contents,
+    statusBarHeight: 0,
+    navBarHeight: 44,
+  },
+
+  onLoad() {
+    const info = wx.getSystemInfoSync()
+    this.setData({ statusBarHeight: info.statusBarHeight })
   },
 
   onCategoryTap(e) {
