@@ -24,7 +24,9 @@
     <view class="section-title">近期活动</view>
     <view class="act-list">
       <view class="act-card card" wx:for="{{contents}}" wx:key="id" bindtap="onContentTap" data-id="{{item.id}}">
-        <view class="act-cover" style="background:linear-gradient(135deg,{{item.color}},#1a1a1a)"></view>
+        <view class="act-cover" style="background:linear-gradient(135deg,{{item.color}},#1a1a1a)">
+          <image wx:if="{{item.image}}" class="act-cover-img" src="{{item.image}}" mode="aspectFill"></image>
+        </view>
         <view class="act-info">
           <text class="act-title">{{item.title}}</text>
           <text class="act-time">{{item.time}}</text>
@@ -41,7 +43,9 @@
       <view class="act-list">
         <block wx:for="{{contents}}" wx:key="id" wx:for-item="c">
           <view wx:if="{{c.category===item}}" class="act-card card" bindtap="onContentTap" data-id="{{c.id}}">
-            <view class="act-cover" style="background:linear-gradient(135deg,{{c.color}},#1a1a1a)"></view>
+            <view class="act-cover" style="background:linear-gradient(135deg,{{c.color}},#1a1a1a)">
+              <image wx:if="{{c.image}}" class="act-cover-img" src="{{c.image}}" mode="aspectFill"></image>
+            </view>
             <view class="act-info">
               <text class="act-title">{{c.title}}</text>
               <text class="act-time">{{c.time}}</text>
