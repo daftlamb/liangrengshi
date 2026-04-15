@@ -32,7 +32,7 @@
       wx:for="{{menuItems}}" wx:key="id"
       bindtap="onMenuTap" data-label="{{item.label}}"
     >
-      <text class="menu-icon">{{item.icon}}</text>
+      <image class="menu-icon" src="{{item.icon}}" mode="aspectFit"></image>
       <text class="menu-label">{{item.label}}</text>
       <text class="menu-arrow">›</text>
     </view>

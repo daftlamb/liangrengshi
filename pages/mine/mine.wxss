@@ -42,6 +42,6 @@
   padding: 36rpx 24rpx;
   border-bottom: 1rpx solid #ede8dc;
 }
-.menu-icon { font-size: 36rpx; }
+.menu-icon { width: 40rpx; height: 40rpx; }
 .menu-label { flex: 1; font-size: 28rpx; color: #333333; }
 .menu-arrow { font-size: 32rpx; color: #cccccc; }

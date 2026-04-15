@@ -4,11 +4,11 @@ Page({
     achievementLevels: [1, 9, 33, 66, 99],
     currentLevel: 0,
     menuItems: [
-      { id: 1, icon: '🎯', label: '任务中心' },
-      { id: 2, icon: '🚗', label: '停车缴费' },
-      { id: 3, icon: '🧾', label: '开具发票' },
-      { id: 4, icon: '💬', label: '反馈建议' },
-      { id: 5, icon: '⚙️', label: '设置' },
+      { id: 1, icon: '../../icons/target.png', label: '任务中心' },
+      { id: 2, icon: '../../icons/parking.png', label: '停车缴费' },
+      { id: 3, icon: '../../icons/receipt.png', label: '开具发票' },
+      { id: 4, icon: '../../icons/feedback.png', label: '反馈建议' },
+      { id: 5, icon: '../../icons/settings.png', label: '设置' },
     ]
   },
   onShow() {
