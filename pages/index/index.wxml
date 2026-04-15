@@ -1,13 +1,15 @@
 <view class="container">
- <!-- Custom Nav Bar -->
- <view class="custom-nav" style="padding-top:{{statusBarHeight}}px">
-  <image class="nav-logo" src="../../images/logo.png" mode="aspectFit"></image>
- </view>
+
+  <!-- Custom Nav Bar -->
+  <view class="custom-nav" style="padding-top:{{statusBarHeight}}px">
+    <image class="nav-logo" src="../../images/logo.png" mode="aspectFit"></image>
+  </view>
 
   <!-- KV Banner -->
   <swiper class="kv-swiper" autoplay indicator-dots indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#e8d5a3" circular>
     <swiper-item wx:for="{{banners}}" wx:key="id">
       <view class="kv-item" style="background:{{item.color}}">
+        <image wx:if="{{item.image}}" class="kv-bg" src="{{item.image}}" mode="aspectFill"></image>
         <view class="kv-content">
           <text class="kv-title">{{item.title}}</text>
           <text class="kv-subtitle">{{item.subtitle}}</text>
@@ -39,6 +41,7 @@
   <view class="feed">
     <view class="feed-card card" wx:for="{{filteredContents}}" wx:key="id" bindtap="onContentTap" data-id="{{item.id}}">
       <view class="feed-cover" style="background:linear-gradient(135deg, {{item.color}}, #1a1a1a)">
+        <image wx:if="{{item.image}}" class="feed-cover-img" src="{{item.image}}" mode="aspectFill"></image>
         <view class="feed-tag tag tag-{{item.tagType}}">{{item.tag}}</view>
       </view>
       <view class="feed-info">
