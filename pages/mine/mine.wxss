@@ -8,40 +8,40 @@
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background: #e8d5a3;
-  color: #0a0a0a;
+  background: #5a7a4a;
+  color: #ffffff;
   font-size: 40rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 500;
 }
-.user-name { display: block; font-size: 32rpx; color: #fff; font-weight: 400; }
-.user-sub  { display: block; font-size: 24rpx; color: #666; margin-top: 8rpx; }
+.user-name { display: block; font-size: 32rpx; color: #1a1a1a; font-weight: 400; }
+.user-sub  { display: block; font-size: 24rpx; color: #888888; margin-top: 8rpx; }
 
 .achievement-section {
   margin: 0 24rpx 32rpx;
   padding: 32rpx;
 }
-.ach-title { font-size: 24rpx; color: #666; display: block; margin-bottom: 28rpx; letter-spacing: 2rpx; }
+.ach-title { font-size: 24rpx; color: #888888; display: block; margin-bottom: 28rpx; letter-spacing: 2rpx; }
 .ach-levels { display: flex; justify-content: space-between; }
 .ach-item { display: flex; flex-direction: column; align-items: center; gap: 10rpx; }
 .ach-circle {
   width: 72rpx; height: 72rpx; border-radius: 50%;
-  background: #222; color: #444;
+  background: #ede8dc; color: #aaaaaa;
   font-size: 22rpx; display: flex; align-items: center; justify-content: center;
-  border: 2rpx solid #333;
+  border: 2rpx solid #e0d8c8;
 }
-.ach-unlocked .ach-circle { background: rgba(232,213,163,0.15); color: #e8d5a3; border-color: #e8d5a3; }
-.ach-label { font-size: 20rpx; color: #555; }
-.ach-unlocked .ach-label { color: #e8d5a3; }
+.ach-unlocked .ach-circle { background: rgba(90,122,74,0.12); color: #5a7a4a; border-color: #5a7a4a; }
+.ach-label { font-size: 20rpx; color: #aaaaaa; }
+.ach-unlocked .ach-label { color: #5a7a4a; }
 
 .menu-list { margin: 0 24rpx; }
 .menu-item {
   display: flex; align-items: center; gap: 20rpx;
   padding: 36rpx 24rpx;
-  border-bottom: 1rpx solid #1a1a1a;
+  border-bottom: 1rpx solid #ede8dc;
 }
 .menu-icon { font-size: 36rpx; }
-.menu-label { flex: 1; font-size: 28rpx; color: #ccc; }
-.menu-arrow { font-size: 32rpx; color: #444; }
+.menu-label { flex: 1; font-size: 28rpx; color: #333333; }
+.menu-arrow { font-size: 32rpx; color: #cccccc; }

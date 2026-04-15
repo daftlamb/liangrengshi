@@ -6,31 +6,37 @@
     "pages/detail/detail"
   ],
   "tabBar": {
-    "color": "#666666",
-    "selectedColor": "#e8d5a3",
-    "backgroundColor": "#0a0a0a",
-    "borderStyle": "black",
+    "color": "#888888",
+    "selectedColor": "#5a7a4a",
+    "backgroundColor": "#f5f0e8",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "首页"
+        "text": "首页",
+        "iconPath": "icons/home.png",
+        "selectedIconPath": "icons/home-active.png"
       },
       {
         "pagePath": "pages/activity/activity",
-        "text": "活动"
+        "text": "活动",
+        "iconPath": "icons/calendar.png",
+        "selectedIconPath": "icons/calendar-active.png"
       },
       {
         "pagePath": "pages/mine/mine",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "icons/user.png",
+        "selectedIconPath": "icons/user-active.png"
       }
     ]
   },
   "window": {
-    "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#0a0a0a",
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#f5f0e8",
     "navigationBarTitleText": "良壤",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#0a0a0a"
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f0e8"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"
