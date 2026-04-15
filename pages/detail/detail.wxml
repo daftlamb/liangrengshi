@@ -1,0 +1,27 @@
+<view class="container" wx:if="{{content}}">
+  <!-- KV Cover -->
+  <view class="detail-cover" style="background:linear-gradient(160deg,{{content.color}},#0a0a0a)">
+    <view class="detail-kv-text">
+      <view class="tag tag-{{content.tagType}}">{{content.tag}}</view>
+      <text class="detail-kv-title">{{content.title}}</text>
+    </view>
+  </view>
+
+  <!-- Meta -->
+  <view class="detail-meta">
+    <text class="meta-time">🕐 {{content.time}}</text>
+    <text class="meta-cat">{{content.category}}</text>
+  </view>
+
+  <!-- Body -->
+  <view class="detail-body">
+    <text class="detail-text">{{content.detail}}</text>
+  </view>
+
+  <!-- Actions -->
+  <view class="detail-actions">
+    <view class="action-btn btn-outline" bindtap="onActivity">查看活动</view>
+    <view class="action-btn btn-outline" bindtap="onMap">打开地图</view>
+    <view class="action-btn btn-primary" bindtap="onCheckin">去打卡</view>
+  </view>
+</view>

@@ -1,0 +1,90 @@
+.tabs {
+  display: flex;
+  border-bottom: 1rpx solid #222;
+  padding: 0 32rpx;
+}
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 28rpx 0;
+  font-size: 26rpx;
+  color: #666;
+}
+.tab-active {
+  color: #e8d5a3;
+  border-bottom: 2rpx solid #e8d5a3;
+}
+
+.cal-header { padding: 32rpx 32rpx 16rpx; }
+.cal-month { font-size: 30rpx; color: #fff; font-weight: 300; }
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0 16rpx;
+}
+.weekday {
+  text-align: center;
+  font-size: 22rpx;
+  color: #555;
+  padding: 12rpx 0;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0 16rpx 24rpx;
+  gap: 4rpx;
+}
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12rpx 0;
+  font-size: 26rpx;
+  color: #888;
+  position: relative;
+}
+.cal-today { color: #fff; font-weight: 500; }
+.cal-active { color: #e8d5a3; }
+.cal-dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: #e8d5a3;
+  margin-top: 4rpx;
+}
+
+.act-list {
+  padding: 0 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding-bottom: 32rpx;
+}
+.act-card {
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  height: 160rpx;
+}
+.act-cover {
+  width: 200rpx;
+  height: 160rpx;
+  flex-shrink: 0;
+}
+.act-info {
+  flex: 1;
+  padding: 20rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  justify-content: center;
+}
+.act-title { font-size: 28rpx; color: #fff; font-weight: 400; }
+.act-time  { font-size: 22rpx; color: #e8d5a3; }
+.act-desc  { font-size: 22rpx; color: #666; line-height: 1.4; }
+
+.cat-section { margin-bottom: 8rpx; }
+.cat-view { padding-bottom: 120rpx; }
+.calendar-view { padding-bottom: 120rpx; }

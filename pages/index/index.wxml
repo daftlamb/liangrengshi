@@ -1,0 +1,48 @@
+<view class="container">
+
+  <!-- KV Banner -->
+  <swiper class="kv-swiper" autoplay indicator-dots indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#e8d5a3" circular>
+    <swiper-item wx:for="{{banners}}" wx:key="id">
+      <view class="kv-item" style="background:{{item.color}}">
+        <view class="kv-content">
+          <text class="kv-title">{{item.title}}</text>
+          <text class="kv-subtitle">{{item.subtitle}}</text>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+
+  <!-- Quick Links -->
+  <view class="quick-grid">
+    <view class="quick-item" wx:for="{{quickLinks}}" wx:key="id" bindtap="onQuickLinkTap" data-id="{{item.id}}">
+      <text class="quick-icon">{{item.icon}}</text>
+      <text class="quick-label">{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- Category Tabs -->
+  <scroll-view class="cat-scroll" scroll-x>
+    <view class="cat-list">
+      <view
+        class="cat-item {{activeCategory === item ? 'cat-active' : ''}}"
+        wx:for="{{categories}}" wx:key="*this"
+        bindtap="onCategoryTap" data-cat="{{item}}"
+      >{{item}}</view>
+    </view>
+  </scroll-view>
+
+  <!-- Content Feed -->
+  <view class="feed">
+    <view class="feed-card card" wx:for="{{filteredContents}}" wx:key="id" bindtap="onContentTap" data-id="{{item.id}}">
+      <view class="feed-cover" style="background:linear-gradient(135deg, {{item.color}}, #1a1a1a)">
+        <view class="feed-tag tag tag-{{item.tagType}}">{{item.tag}}</view>
+      </view>
+      <view class="feed-info">
+        <text class="feed-title">{{item.title}}</text>
+        <text class="feed-desc">{{item.desc}}</text>
+        <text class="feed-time">{{item.time}}</text>
+      </view>
+    </view>
+  </view>
+
+</view>

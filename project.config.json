@@ -1,0 +1,9 @@
+{
+  "desc": "关于本项目的配置",
+  "setting": { "urlCheck": false },
+  "appid": "touristappid",
+  "projectname": "liangrengshi",
+  "compileType": "miniprogram",
+  "libVersion": "3.4.3",
+  "miniprogramRoot": "./"
+}
