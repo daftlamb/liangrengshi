@@ -17,8 +17,8 @@ describe('falloffs', () => {
     expect(evaluateFalloff(f,context(0,1))).not.toBe(evaluateFalloff(f,context(0,2)));
     const otherSeed = {id:'r',type:'random',seed:10,min:.2,max:.8} as Falloff;
     expect(evaluateFalloff(otherSeed,context(0,1))).not.toBe(evaluateFalloff(f,context(0,1)));
-    expect(evaluateFalloff(f,context(0,1))).toBeGreaterThanOrEqual(0);
-    expect(evaluateFalloff(f,context(0,1))).toBeLessThanOrEqual(1);
+    expect(evaluateFalloff(f,context(0,1))).toBeGreaterThanOrEqual(.2);
+    expect(evaluateFalloff(f,context(0,1))).toBeLessThanOrEqual(.8);
   });
   it('does not mutate context and visits combined falloffs in binding order', () => {
     const frozen = Object.freeze({...context(25,1), position:Object.freeze({x:25,y:0}), baseTransform:Object.freeze({x:25,y:0,rotation:0})});

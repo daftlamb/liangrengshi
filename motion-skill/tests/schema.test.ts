@@ -31,6 +31,7 @@ describe('sceneSchema', () => {
     expect(sceneSchema.safeParse({ ...minimalScene, behaviors, animation: [binding(0, 'supporting'), binding(1, 'supporting'), binding(2, 'supporting')] }).success).toBe(false);
   });
   it('rejects unseeded noise behavior', () => expect(sceneSchema.safeParse({ ...minimalScene, behaviors: [{ id: 'noise', type: 'noise' }] }).success).toBe(false));
+  it('accepts selectable waveforms', () => expect(sceneSchema.parse({ ...minimalScene, behaviors: [{ id: 'wave', type: 'wave', waveform: 'triangle' }] }).behaviors[0]).toMatchObject({waveform:'triangle'}));
   it('accepts line text splitting and normalized falloff modifiers', () => {
     const elements = [{ ...minimalScene.elements[0], split: 'lines' }];
     const falloffs = [{ id: 'field', type: 'linear', easing: 'easeInOut', invert: true, clamp: [0.2, 0.8] }];

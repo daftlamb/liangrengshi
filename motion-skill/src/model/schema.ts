@@ -26,7 +26,7 @@ export const generatorSchema = z.discriminatedUnion('type', [
 
 const behaviorBase = { id };
 export const behaviorSchema = z.discriminatedUnion('type', [
-  z.object({ ...behaviorBase, type: z.literal('wave'), amplitude: finite.optional(), frequency: finite.optional(), phase: finite.optional() }),
+  z.object({ ...behaviorBase, type: z.literal('wave'), waveform: z.enum(['sine', 'triangle', 'saw']).optional(), amplitude: finite.optional(), frequency: finite.optional(), phase: finite.optional() }),
   z.object({ ...behaviorBase, type: z.literal('noise'), amplitude: finite.optional(), frequency: finite.optional(), seed: z.number().int() }),
   z.object({ ...behaviorBase, type: z.literal('spring'), stiffness: finite.nonnegative().optional(), damping: finite.nonnegative().optional() }),
   z.object({ ...behaviorBase, type: z.literal('follow'), targetElementId: id }),
