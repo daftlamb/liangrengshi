@@ -137,21 +137,25 @@ const acceptanceNames = [
 
 type MotionTest = {
   renderAt(time: number, pointer?: { x: number; y: number; active?: boolean }): void;
+  resume(): void;
+  renderToken: number;
   lastRenderedTime: number | null;
   revision: number | null;
   instances: Array<{ instanceId: string; x: number; y: number }>;
 };
 const renderAt = async (page: import('playwright/test').Page, time: number, pointer?: { x: number; y: number; active?: boolean }) => {
+  const before = await page.evaluate(() => (window as unknown as { __motionTest: MotionTest }).__motionTest.renderToken);
   await page.evaluate(async ({ time, pointer }) => {
     await document.fonts.ready;
     (window as unknown as { __motionTest: MotionTest }).__motionTest.renderAt(time, pointer);
   }, { time, pointer });
   const rendered = await page.evaluate(() => {
     const hook = (window as unknown as { __motionTest: MotionTest }).__motionTest;
-    return { time: hook.lastRenderedTime, revision: hook.revision };
+    return { time: hook.lastRenderedTime, revision: hook.revision, token: hook.renderToken };
   });
   expect(rendered.time).toBe(time);
   expect(rendered.revision).toEqual(expect.any(Number));
+  expect(rendered.token).toBeGreaterThan(before);
 };
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
@@ -174,6 +178,12 @@ test('03-pointer-repel-grid follows pointer motion inside the canvas', async ({ 
   const secondImage = await canvas.screenshot();
   expect(second).not.toEqual(first);
   expect(hash(secondImage)).not.toBe(hash(firstImage));
+  const manualToken = await page.evaluate(() => {
+    const hook = (window as unknown as { __motionTest: MotionTest }).__motionTest;
+    hook.resume();
+    return hook.renderToken;
+  });
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __motionTest: MotionTest }).__motionTest.renderToken)).toBeGreaterThan(manualToken);
 });
 
 for (const fixtureName of acceptanceNames) {
@@ -192,6 +202,9 @@ for (const fixtureName of acceptanceNames) {
     }
     if (fixtureName !== '03-pointer-repel-grid' && fixtureName !== '06-following-lines') {
       expect(hash(images[1])).not.toBe(hash(images[0]));
+    }
+    if (fixtureName === '03-pointer-repel-grid') {
+      expect(images.map(hash)).toEqual([hash(images[0]), hash(images[0]), hash(images[0])]);
     }
   });
 }

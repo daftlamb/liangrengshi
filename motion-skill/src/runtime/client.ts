@@ -21,11 +21,15 @@ const pointer = { x: 0, y: 0, active: false };
 let lastRenderedTime: number | null = null;
 let lastRenderedRevision: number | null = null;
 let lastInstances: ReturnType<typeof evaluateScene> = [];
+let manualMode = false;
+let renderToken = 0;
 
 declare global {
   interface Window {
     __motionTest: {
       renderAt(time: number, nextPointer?: { x: number; y: number; active?: boolean }): void;
+      resume(): void;
+      readonly renderToken: number;
       readonly lastRenderedTime: number | null;
       readonly revision: number | null;
       readonly instances: ReturnType<typeof evaluateScene>;
@@ -35,6 +39,7 @@ declare global {
 
 const renderAt = (time: number, nextPointer?: { x: number; y: number; active?: boolean }) => {
   if (!scene) throw new Error('Scene is not ready');
+  manualMode = true;
   playing = false;
   pausedAt = time;
   if (nextPointer) Object.assign(pointer, nextPointer, { active: nextPointer.active ?? true });
@@ -42,10 +47,20 @@ const renderAt = (time: number, nextPointer?: { x: number; y: number; active?: b
   renderer.render(lastInstances, scene.composition, scene.metadata.revision);
   lastRenderedTime = time;
   lastRenderedRevision = scene.metadata.revision;
+  renderToken += 1;
+};
+
+const resume = () => {
+  manualMode = false;
+  playing = true;
+  started = performance.now() - pausedAt * 1000;
+  previous = performance.now();
 };
 
 Object.defineProperty(window, '__motionTest', { value: {
   renderAt,
+  resume,
+  get renderToken() { return renderToken; },
   get lastRenderedTime() { return lastRenderedTime; },
   get revision() { return lastRenderedRevision; },
   get instances() { return lastInstances; },
@@ -90,12 +105,17 @@ const reportFailure = (failedScene: Scene, error: unknown): Promise<void> => {
 };
 
 function frame(now: number) {
+  if (manualMode) {
+    requestAnimationFrame(frame);
+    return;
+  }
   if (scene) {
     const elapsed = playing ? (now - started) / 1000 : pausedAt;
     try {
       lastInstances = evaluateScene(scene, { time: elapsed, delta: Math.min((now - previous) / 1000, .1), pointer });
       renderer.render(lastInstances, scene.composition, scene.metadata.revision);
       lastRenderedTime = elapsed; lastRenderedRevision = scene.metadata.revision;
+      renderToken += 1;
     }
     catch (error) { const failedScene = scene; scene = undefined; void reportFailure(failedScene, error); }
   }
