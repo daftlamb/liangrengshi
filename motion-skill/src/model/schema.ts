@@ -6,7 +6,7 @@ const opacity = finite.min(0).max(1);
 const point = z.object({ x: finite, y: finite });
 const baseElement = { id, opacity: opacity.optional(), x: finite.optional(), y: finite.optional(), rotation: finite.optional() };
 
-const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'words', 'characters']).optional(), fill: z.string().optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional() });
+const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'lines', 'words', 'characters']).optional(), fill: z.string().optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional() });
 const circleElement = z.object({ ...baseElement, type: z.literal('circle'), radius: finite.nonnegative(), fill: z.string().optional(), stroke: z.string().optional() });
 const rectangleElement = z.object({ ...baseElement, type: z.literal('rectangle'), width: finite.nonnegative(), height: finite.nonnegative(), cornerRadius: finite.nonnegative().optional(), fill: z.string().optional(), stroke: z.string().optional() });
 const lineElement = z.object({ ...baseElement, type: z.literal('line'), x2: finite, y2: finite, stroke: z.string().optional(), strokeWidth: finite.nonnegative().optional() });
@@ -35,7 +35,7 @@ export const behaviorSchema = z.discriminatedUnion('type', [
   z.object({ ...behaviorBase, type: z.literal('repel'), targetElementId: id, strength: finite.optional() }),
 ]);
 
-const falloffBase = { id };
+const falloffBase = { id, easing: z.enum(['linear', 'easeIn', 'easeOut', 'easeInOut']).optional(), invert: z.boolean().optional(), clamp: z.tuple([opacity, opacity]).optional() };
 export const falloffSchema = z.discriminatedUnion('type', [
   z.object({ ...falloffBase, type: z.literal('linear'), start: finite.optional(), end: finite.optional() }),
   z.object({ ...falloffBase, type: z.literal('radial'), center: point.optional(), radius: finite.positive().optional() }),
