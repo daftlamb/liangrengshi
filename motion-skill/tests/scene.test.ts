@@ -38,7 +38,21 @@ describe('evaluateScene',()=>{
  it('inherits group bindings and combines nested group transforms',()=>{
    const scene={...fixture,elements:[{id:'outer',type:'group',x:10,y:20,rotation:.2,childIds:['inner']},{id:'inner',type:'group',x:3,y:4,rotation:.3,childIds:['dot']},{id:'dot',type:'circle',radius:2,x:1,y:2}],generators:[],behaviors:[{id:'w',type:'wave',amplitude:5,frequency:1}],falloffs:[],animation:[{id:'a',elementId:'outer',behaviorId:'w',falloffIds:[],channels:['x'],role:'primary'}]} as Scene;
    const [dot]=evaluateScene(scene,frame(.25));
-   expect([dot.x,dot.y,dot.rotation]).toEqual([19,26,.5]);
+   expect(dot.x).toBeCloseTo(17.064253895); expect(dot.y).toBeCloseTo(26.750864966); expect(dot.rotation).toBeCloseTo(.5);
+ });
+ it('applies group rotation and scale to a grouped line path source',()=>{
+   const scene={...fixture,elements:[{id:'group',type:'group',x:10,y:20,rotation:Math.PI/2,scale:2,childIds:['guide']},{id:'guide',type:'line',x:1,y:0,x2:3,y2:0},{id:'copy',type:'text',text:'AB',split:'characters'}],generators:[{id:'path',type:'path',elementId:'copy',pathElementId:'guide',count:2}],animation:[]} as Scene;
+   const copies=evaluateScene(scene,frame(0)).filter(item=>item.id==='copy');
+   expect(copies.map(item=>[item.x,item.y,item.rotation])).toEqual([[10,22,Math.PI/2],[10,26,Math.PI/2]]);
+ });
+ it('resolves grouped drawable and lookAt/force targets through one world transform',()=>{
+   const base={...fixture,elements:[{id:'group',type:'group',x:10,y:20,rotation:Math.PI/2,scale:2,childIds:['target']},{id:'target',type:'circle',radius:1,x:5,y:0},{id:'actor',type:'circle',radius:1,x:0,y:20}],generators:[],falloffs:[]} as Scene;
+   const look={...base,behaviors:[{id:'b',type:'lookAt',targetElementId:'target'}],animation:[{id:'a',elementId:'actor',behaviorId:'b',falloffIds:[],channels:['rotation'],role:'primary'}]} as Scene;
+   const force={...base,behaviors:[{id:'b',type:'attract',targetElementId:'target',strength:10}],animation:[{id:'a',elementId:'actor',behaviorId:'b',falloffIds:[],channels:['x','y'],role:'primary'}]} as Scene;
+   expect(evaluateScene(look,frame(0)).find(item=>item.id==='target')).toMatchObject({x:10,y:30,scale:2,rotation:Math.PI/2});
+   expect(evaluateScene(look,frame(0)).find(item=>item.id==='actor')?.rotation).toBeCloseTo(Math.PI/4);
+   const forced=evaluateScene(force,{...frame(0),delta:1}).find(item=>item.id==='actor')!;
+   expect(forced.x).toBeCloseTo(Math.SQRT1_2*10); expect(forced.y).toBeCloseTo(20+Math.SQRT1_2*10);
  });
  it.each([
    ['behavior',{behaviors:[]}],

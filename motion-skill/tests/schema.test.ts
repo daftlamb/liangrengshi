@@ -19,6 +19,12 @@ describe('sceneSchema', () => {
     expect(sceneSchema.safeParse({...minimalScene,generators:[{id:'g',type:'path',elementId:'title',pathElementId:'title'}]}).success).toBe(false);
     expect(sceneSchema.safeParse({...minimalScene,elements:[{id:'a',type:'group',childIds:['b']},{id:'b',type:'group',childIds:['a']}]}).success).toBe(false);
   });
+  it('rejects group generator targets, multi-parent children, and behavior group targets', () => {
+    const elements=[{id:'one',type:'group',childIds:['title']},{id:'two',type:'group',childIds:['title']},minimalScene.elements[0]];
+    expect(sceneSchema.safeParse({...minimalScene,elements,generators:[{id:'g',type:'linear',elementId:'one'}]}).success).toBe(false);
+    expect(sceneSchema.safeParse({...minimalScene,elements}).success).toBe(false);
+    expect(sceneSchema.safeParse({...minimalScene,elements:[{id:'one',type:'group',childIds:['title']},minimalScene.elements[0]],behaviors:[{id:'b',type:'lookAt',targetElementId:'one'}]}).success).toBe(false);
+  });
   it('rejects negative duration', () => expect(sceneSchema.safeParse({ ...minimalScene, composition: { ...minimalScene.composition, duration: -1 } }).success).toBe(false));
   it('rejects out-of-range opacity', () => expect(sceneSchema.safeParse({ ...minimalScene, elements: [{ ...minimalScene.elements[0], opacity: 1.1 }] }).success).toBe(false));
   it.each(['scatter', 'random'] as const)('rejects unseeded %s primitives', (type) => {

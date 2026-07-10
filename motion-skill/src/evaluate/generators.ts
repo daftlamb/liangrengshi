@@ -90,6 +90,6 @@ export function generateInstances(generator: Generator, element: Element, compos
         tangent=Math.atan2(derivative.y,derivative.x);
       }
     }
-    return { id: `${element.id}:${index}`, index, count, baseTransform: { ...base }, position, tangent, content: split[index % Math.max(1, split.length)] };
+    return { id: `${element.id}:${index}`, index, count, baseTransform: { ...base, rotation:tangent??base.rotation }, position, tangent, content: split[index % Math.max(1, split.length)] };
   });
 }

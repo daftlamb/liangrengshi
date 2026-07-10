@@ -28,3 +28,12 @@
 - Group bindings now propagate through nested descendants and group transforms compose additively with descendant transforms.
 - `evaluateScene` validates runtime input up front and fails fast for missing generator, behavior, target, and falloff references.
 - Added regression tests for path content/source separation, nested group inheritance, cycles, duplicate generator targets, and typed-invalid scenes.
+
+## Second review fixes
+
+- Generator targets must now be drawable elements; group targets are rejected during semantic validation.
+- Group membership is a tree: validation rejects any child referenced by more than one parent, preserving one stable world transform and instance identity.
+- Behavior targets must be drawable elements; targeting a geometry-free group is rejected instead of assigning it an ambiguous origin.
+- Added a shared affine world-transform resolver with translation, rotation, and uniform scale composition. Flattened drawables, behavior targets, and path-source geometry all consume the same resolved transforms.
+- Group rotation and scale now transform line, circle, and cubic path geometry, including path tangents; grouped look-at and force targets use their world-space points.
+- Added regression coverage for prohibited group references, multi-parent graphs, grouped path sources, and grouped look-at/force targets.

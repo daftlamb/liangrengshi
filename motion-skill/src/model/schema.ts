@@ -4,7 +4,7 @@ const id = z.string().min(1);
 const finite = z.number().finite();
 const opacity = finite.min(0).max(1);
 const point = z.object({ x: finite, y: finite });
-const baseElement = { id, opacity: opacity.optional(), x: finite.optional(), y: finite.optional(), rotation: finite.optional() };
+const baseElement = { id, opacity: opacity.optional(), x: finite.optional(), y: finite.optional(), rotation: finite.optional(), scale: finite.nonnegative().optional() };
 
 const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'lines', 'words', 'characters']).optional(), fill: z.string().optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional() });
 const circleElement = z.object({ ...baseElement, type: z.literal('circle'), radius: finite.nonnegative(), fill: z.string().optional(), stroke: z.string().optional() });
@@ -75,9 +75,14 @@ export const sceneSchema = z.object({
     if (new Set(element.childIds).size !== element.childIds.length) ctx.addIssue({ code: 'custom', path: ['elements', index, 'childIds'], message: 'Group cannot contain duplicate child IDs' });
     element.childIds.forEach((childId) => { if (!elementIds.has(childId)) ctx.addIssue({ code: 'custom', path: ['elements', index, 'childIds'], message: 'Unknown child reference' }); });
   } });
+  const parents = new Map<string, number>();
+  scene.elements.forEach(element => { if (element.type === 'group') element.childIds.forEach(childId => parents.set(childId,(parents.get(childId)??0)+1)); });
+  for (const [childId, count] of parents) if (count > 1) ctx.addIssue({ code: 'custom', path: ['elements'], message: `Element ${childId} may have at most one parent group` });
   const generatorTargets = new Set<string>();
   scene.generators.forEach((generator, index) => {
-    if (!elementIds.has(generator.elementId)) ctx.addIssue({ code: 'custom', path: ['generators', index, 'elementId'], message: 'Unknown generator target reference' });
+    const generatorTarget=scene.elements.find(element=>element.id===generator.elementId);
+    if (!generatorTarget) ctx.addIssue({ code: 'custom', path: ['generators', index, 'elementId'], message: 'Unknown generator target reference' });
+    else if(generatorTarget.type==='group') ctx.addIssue({ code: 'custom', path: ['generators', index, 'elementId'], message: 'Generator target must be drawable, not a group' });
     if (generatorTargets.has(generator.elementId)) ctx.addIssue({ code: 'custom', path: ['generators', index, 'elementId'], message: 'An element may have at most one generator' });
     generatorTargets.add(generator.elementId);
     if (generator.type === 'path') {
@@ -96,7 +101,11 @@ export const sceneSchema = z.object({
     visiting.delete(groupId); visited.add(groupId); return cyclic;
   };
   for (const [groupId] of groups) if (visitGroup(groupId)) { ctx.addIssue({ code: 'custom', path: ['elements'], message: 'Group hierarchy cannot contain cycles' }); break; }
-  scene.behaviors.forEach((behavior, index) => { if ('targetElementId' in behavior && !elementIds.has(behavior.targetElementId)) ctx.addIssue({ code: 'custom', path: ['behaviors', index, 'targetElementId'], message: 'Unknown target reference' }); });
+  scene.behaviors.forEach((behavior, index) => { if ('targetElementId' in behavior) {
+    const target=scene.elements.find(element=>element.id===behavior.targetElementId);
+    if (!target) ctx.addIssue({ code: 'custom', path: ['behaviors', index, 'targetElementId'], message: 'Unknown target reference' });
+    else if(target.type==='group') ctx.addIssue({ code: 'custom', path: ['behaviors', index, 'targetElementId'], message: 'Behavior target must be drawable, not a group' });
+  } });
 });
 
 export type Element = z.infer<typeof elementSchema>;
