@@ -5,16 +5,16 @@ import type { Element, Generator } from '../src/model/schema';
 
 const composition = { width: 200, height: 100 };
 const element = { id: 'title', type: 'text', text: 'AB', split: 'characters', x: 3, y: 4, rotation: 0.5 } as Element;
-const generate = (generator: Generator, target: Element = element) => generateInstances(generator, target, composition);
+const generate = (generator: object, target: Element = element, path?: Element) => generateInstances({ elementId: target.id, ...generator } as Generator, target, composition, path ?? target);
 
 describe('deterministic generators', () => {
   it('places linear endpoints and creates stable IDs', () => {
-    const values = generate({ id: 'g', type: 'linear', count: 3, start: { x: 10, y: 20 }, end: { x: 30, y: 40 } });
+    const values = generate({ id: 'g', type: 'linear', elementId:'title', count: 3, start: { x: 10, y: 20 }, end: { x: 30, y: 40 } });
     expect(values.map(v => [v.id, v.position])).toEqual([['title:0', { x: 10, y: 20 }], ['title:1', { x: 20, y: 30 }], ['title:2', { x: 30, y: 40 }]]);
   });
   it('lays out grids and radial endpoint angles', () => {
-    expect(generate({ id: 'g', type: 'grid', columns: 2, rows: 2, gapX: 10, gapY: 20 }).map(v => v.position)).toEqual([{x:3,y:4},{x:13,y:4},{x:3,y:24},{x:13,y:24}]);
-    const radial = generate({ id: 'r', type: 'radial', count: 4, center: {x:50,y:50}, radius: 10 });
+    expect(generate({ id: 'g', type: 'grid', elementId:'title', columns: 2, rows: 2, gapX: 10, gapY: 20 }).map(v => v.position)).toEqual([{x:3,y:4},{x:13,y:4},{x:3,y:24},{x:13,y:24}]);
+    const radial = generate({ id: 'r', type: 'radial', elementId:'title', count: 4, center: {x:50,y:50}, radius: 10 });
     expect(radial[0].position).toEqual({x:60,y:50});
     expect(radial[1].position.x).toBeCloseTo(50);
     expect(radial[1].position.y).toBeCloseTo(60);
@@ -27,9 +27,15 @@ describe('deterministic generators', () => {
     const bezier = { id:'curve', type:'polygon', points:[{x:0,y:0},{x:0,y:10},{x:10,y:10},{x:10,y:0}] } as Element;
     expect(generate({id:'p',type:'path',pathElementId:'curve',count:2}, bezier)[0].tangent).toBeCloseTo(Math.PI/2);
   });
+  it('keeps generated content separate from path geometry', () => {
+    const line = { id:'line', type:'line', x:10, y:20, x2:110, y2:20 } as Element;
+    const values = generate({id:'p',type:'path',elementId:'title',pathElementId:'line',count:2} as Generator, element, line);
+    expect(values.map(value => value.content)).toEqual(['A', 'B']);
+    expect(values.map(value => value.position)).toEqual([{x:10,y:20},{x:110,y:20}]);
+    expect(values.every(value => value.id.startsWith('title:'))).toBe(true);
+  });
   it('requires the referenced path element and rejects unsupported geometry', () => {
-    const line = { id:'line', type:'line', x:0, y:0, x2:100, y2:0 } as Element;
-    expect(() => generate({id:'p',type:'path',pathElementId:'other',count:2}, line)).toThrow(/pathElementId/i);
+    expect(() => generateInstances({id:'p',type:'path',elementId:'title',pathElementId:'line',count:2}, element, composition)).toThrow(/path reference/i);
     expect(() => generate({id:'p',type:'path',pathElementId:'title',count:2})).toThrow(/unsupported path geometry/i);
   });
   it('uses limiting cubic tangents when endpoint derivatives vanish', () => {

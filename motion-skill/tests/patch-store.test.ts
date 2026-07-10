@@ -8,7 +8,7 @@ function animatedScene(count = 10, behaviorType: 'wave' | 'spring' = 'wave'): Sc
   return {
     ...createDefaultScene('Test', 42),
     elements: [{ id: 'box', type: 'rectangle', width: 10, height: 10, fill: '#fff' }],
-    generators: [{ id: 'copies', type: 'linear', count }],
+    generators: [{ id: 'copies', type: 'linear', elementId: 'box', count }],
     behaviors: [{ id: 'move', type: behaviorType }],
     falloffs: [{ id: 'fade', type: 'linear' }],
     animation: [{ id: 'binding', elementId: 'box', behaviorId: 'move', falloffIds: ['fade'], channels: ['x'], role: 'primary' }],
@@ -62,7 +62,7 @@ describe('estimateSceneCost', () => {
 
   it('uses grid dimensions deterministically', () => {
     const scene = animatedScene();
-    scene.generators = [{ id: 'copies', type: 'grid', columns: 20, rows: 30 }];
+    scene.generators = [{ id: 'copies', type: 'grid', elementId: 'box', columns: 20, rows: 30 }];
     expect(estimateSceneCost(scene).instanceCount).toBe(600);
     expect(estimateSceneCost(scene)).toEqual(estimateSceneCost(structuredClone(scene)));
   });

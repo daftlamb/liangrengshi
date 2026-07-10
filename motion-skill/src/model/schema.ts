@@ -15,7 +15,7 @@ const starElement = z.object({ ...baseElement, type: z.literal('star'), points: 
 const groupElement = z.object({ ...baseElement, type: z.literal('group'), childIds: z.array(id) });
 export const elementSchema = z.discriminatedUnion('type', [textElement, circleElement, rectangleElement, lineElement, polygonElement, starElement, groupElement]);
 
-const generatorBase = { id, count: z.number().int().positive().optional() };
+const generatorBase = { id, elementId: id, count: z.number().int().positive().optional() };
 export const generatorSchema = z.discriminatedUnion('type', [
   z.object({ ...generatorBase, type: z.literal('linear'), start: point.optional(), end: point.optional() }),
   z.object({ ...generatorBase, type: z.literal('grid'), columns: z.number().int().positive().optional(), rows: z.number().int().positive().optional(), gapX: finite.optional(), gapY: finite.optional() }),
@@ -75,7 +75,27 @@ export const sceneSchema = z.object({
     if (new Set(element.childIds).size !== element.childIds.length) ctx.addIssue({ code: 'custom', path: ['elements', index, 'childIds'], message: 'Group cannot contain duplicate child IDs' });
     element.childIds.forEach((childId) => { if (!elementIds.has(childId)) ctx.addIssue({ code: 'custom', path: ['elements', index, 'childIds'], message: 'Unknown child reference' }); });
   } });
-  scene.generators.forEach((generator, index) => { if (generator.type === 'path' && !elementIds.has(generator.pathElementId)) ctx.addIssue({ code: 'custom', path: ['generators', index, 'pathElementId'], message: 'Unknown path reference' }); });
+  const generatorTargets = new Set<string>();
+  scene.generators.forEach((generator, index) => {
+    if (!elementIds.has(generator.elementId)) ctx.addIssue({ code: 'custom', path: ['generators', index, 'elementId'], message: 'Unknown generator target reference' });
+    if (generatorTargets.has(generator.elementId)) ctx.addIssue({ code: 'custom', path: ['generators', index, 'elementId'], message: 'An element may have at most one generator' });
+    generatorTargets.add(generator.elementId);
+    if (generator.type === 'path') {
+      const pathElement = scene.elements.find(({ id }) => id === generator.pathElementId);
+      if (!pathElement) ctx.addIssue({ code: 'custom', path: ['generators', index, 'pathElementId'], message: 'Unknown path reference' });
+      else if (pathElement.type !== 'line' && pathElement.type !== 'circle' && !(pathElement.type === 'polygon' && pathElement.points.length === 4)) ctx.addIssue({ code: 'custom', path: ['generators', index, 'pathElementId'], message: 'Unsupported path geometry' });
+    }
+  });
+  const groups = new Map(scene.elements.filter((element) => element.type === 'group').map((group) => [group.id, group]));
+  const visiting = new Set<string>(); const visited = new Set<string>();
+  const visitGroup = (groupId: string): boolean => {
+    if (visiting.has(groupId)) return true;
+    if (visited.has(groupId)) return false;
+    visiting.add(groupId);
+    const cyclic = groups.get(groupId)?.childIds.some((childId) => groups.has(childId) && visitGroup(childId)) ?? false;
+    visiting.delete(groupId); visited.add(groupId); return cyclic;
+  };
+  for (const [groupId] of groups) if (visitGroup(groupId)) { ctx.addIssue({ code: 'custom', path: ['elements'], message: 'Group hierarchy cannot contain cycles' }); break; }
   scene.behaviors.forEach((behavior, index) => { if ('targetElementId' in behavior && !elementIds.has(behavior.targetElementId)) ctx.addIssue({ code: 'custom', path: ['behaviors', index, 'targetElementId'], message: 'Unknown target reference' }); });
 });
 

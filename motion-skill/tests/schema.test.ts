@@ -13,6 +13,12 @@ describe('sceneSchema', () => {
   it('accepts a valid minimal scene', () => expect(sceneSchema.safeParse(minimalScene).success).toBe(true));
   it('rejects unknown element types', () => expect(sceneSchema.safeParse({ ...minimalScene, elements: [{ id: 'x', type: 'video' }] }).success).toBe(false));
   it('rejects missing references', () => expect(sceneSchema.safeParse({ ...minimalScene, animation: [{ id: 'a', elementId: 'missing', behaviorId: 'also-missing', falloffIds: [], channels: ['x'], role: 'primary' }] }).success).toBe(false));
+  it('rejects missing generator targets, duplicate target generators, unsupported paths, and nested group cycles', () => {
+    expect(sceneSchema.safeParse({...minimalScene,generators:[{id:'g',type:'linear',elementId:'missing'}]}).success).toBe(false);
+    expect(sceneSchema.safeParse({...minimalScene,generators:[{id:'a',type:'linear',elementId:'title'},{id:'b',type:'grid',elementId:'title'}]}).success).toBe(false);
+    expect(sceneSchema.safeParse({...minimalScene,generators:[{id:'g',type:'path',elementId:'title',pathElementId:'title'}]}).success).toBe(false);
+    expect(sceneSchema.safeParse({...minimalScene,elements:[{id:'a',type:'group',childIds:['b']},{id:'b',type:'group',childIds:['a']}]}).success).toBe(false);
+  });
   it('rejects negative duration', () => expect(sceneSchema.safeParse({ ...minimalScene, composition: { ...minimalScene.composition, duration: -1 } }).success).toBe(false));
   it('rejects out-of-range opacity', () => expect(sceneSchema.safeParse({ ...minimalScene, elements: [{ ...minimalScene.elements[0], opacity: 1.1 }] }).success).toBe(false));
   it.each(['scatter', 'random'] as const)('rejects unseeded %s primitives', (type) => {
@@ -48,7 +54,7 @@ describe('sceneSchema', () => {
       { id: 'line', type: 'line', x2: 2, y2: 3 }, { id: 'polygon', type: 'polygon', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] },
       { id: 'star', type: 'star', points: 5, innerRadius: 1, outerRadius: 2 }, { id: 'group', type: 'group', childIds: ['title'] },
     ];
-    const generators = [{ id: 'gl', type: 'linear' }, { id: 'gg', type: 'grid' }, { id: 'gr', type: 'radial' }, { id: 'gp', type: 'path', pathElementId: 'line' }, { id: 'gs', type: 'scatter', seed: 1 }];
+    const generators = [{ id: 'gl', type: 'linear', elementId: 'title' }, { id: 'gg', type: 'grid', elementId: 'circle' }, { id: 'gr', type: 'radial', elementId: 'rectangle' }, { id: 'gp', type: 'path', elementId: 'polygon', pathElementId: 'line' }, { id: 'gs', type: 'scatter', elementId: 'star', seed: 1 }];
     const behaviors = [{ id: 'wave', type: 'wave' }, { id: 'noise', type: 'noise', seed: 1 }, { id: 'spring', type: 'spring' }, { id: 'follow', type: 'follow', targetElementId: 'title' }, { id: 'look', type: 'lookAt', targetElementId: 'title' }, { id: 'attract', type: 'attract', targetElementId: 'title' }, { id: 'repel', type: 'repel', targetElementId: 'title' }];
     const falloffs = [{ id: 'fl', type: 'linear' }, { id: 'fr', type: 'radial' }, { id: 'fi', type: 'index' }, { id: 'fx', type: 'random', seed: 1 }, { id: 'ft', type: 'time' }];
     expect(sceneSchema.safeParse({ ...minimalScene, elements, generators, behaviors, falloffs }).success).toBe(true);
