@@ -33,13 +33,21 @@
 - Added explicit per-command option schemas, validation for integer/range values, duplicate/unknown/missing option rejection, and exactly one structured failure object on stdout.
 - Added regression coverage for transactional recovery, malicious URL metadata, stale unowned PIDs, explicit port mismatch, malformed options, and temporary-file cleanup.
 
+## Second review fixes
+
+- Made `state.json` the sole authority. Legacy migration now occurs only when it is absent (`ENOENT`) and only when `current.json` exactly matches the final history entry; corrupt/unreadable authority files fail without fallback or rewrite.
+- Treats the authoritative rename+fsync as the commit point. Projection failures now return `ok: true`, the committed revision, and a warning; the next load repairs both compatibility projections without reapplying the command.
+- Moved preview initialization and directory watching to authoritative `state.json`, including atomic authoritative rollback writes, eliminating the compatibility-cache visibility window.
+- Removed all signalling and liveness probes based on persisted PIDs. Healthy reuse relies on the loopback identity response; only the `ChildProcess` returned by the current invocation can receive bounded TERM/KILL cleanup on launch timeout.
+- Added regressions for corrupt-authority preservation, inconsistent migration rejection, successful projection-warning semantics, and no double apply.
+
 ## Final verification
 
-- `npm run test:unit`: 73/73 tests passed across 8 files.
+- `npm run test:unit`: 75/75 tests passed across 8 files.
 - `npm run typecheck`: passed.
 - `npm run lint`: passed.
 - `npm run build`: passed.
 
 ## Concern
 
-- `current.json` and `history.json` are compatibility projections, so an observer reading them during the narrow projection interval can see different generations. Commands always load `state.json` as the commit authority and repair both projections before use, so crashes and command restarts cannot accept a mixed pair as state.
+- `npm run test:e2e` currently discovers Vitest unit files through the Playwright configuration and fails before browser execution with “Vitest failed to access its internal state.” This is an existing test-runner configuration issue; the requested unit/typecheck/lint/build/diff checks pass independently.

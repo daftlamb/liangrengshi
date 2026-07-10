@@ -1,9 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Buffer } from 'node:buffer';
-import { readFile, writeFile } from 'node:fs/promises';
+import { open, readFile, rename, rm } from 'node:fs/promises';
 import { watch, type FSWatcher } from 'node:fs';
 import path from 'node:path';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { SceneStore } from '../model/patch-store';
 import type { Scene } from '../model/schema';
@@ -18,6 +19,23 @@ const json = (response: ServerResponse, status: number, body: unknown) => {
 };
 
 const MAX_REPORT_BYTES = 16 * 1024;
+
+async function atomicJson(filename: string, value: unknown) {
+  const temporary = `${filename}.tmp-${process.pid}-${randomUUID()}`;
+  let handle;
+  try {
+    handle = await open(temporary, 'wx', 0o600);
+    await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`);
+    await handle.sync();
+    await handle.close(); handle = undefined;
+    await rename(temporary, filename);
+    const directory = await open(path.dirname(filename), 'r');
+    try { await directory.sync(); } finally { await directory.close(); }
+  } finally {
+    if (handle) await handle.close().catch(() => undefined);
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
+}
 
 const readJsonBody = (request: IncomingMessage, response: ServerResponse): Promise<unknown> => new Promise((resolve, reject) => {
   const chunks: Buffer[] = [];
@@ -43,8 +61,9 @@ const readJsonBody = (request: IncomingMessage, response: ServerResponse): Promi
 });
 
 export async function startPreviewServer({ port, stateDir, host = '127.0.0.1', previewIdentity }: PreviewServerOptions): Promise<PreviewServer> {
-  const scenePath = path.join(stateDir, 'current.json');
-  const initial = JSON.parse(await readFile(scenePath, 'utf8')) as Scene;
+  const scenePath = path.join(stateDir, 'state.json');
+  const readCurrent = async () => (JSON.parse(await readFile(scenePath, 'utf8')) as { current: Scene }).current;
+  const initial = await readCurrent();
   const store = new SceneStore(initial);
   const sessionToken = randomBytes(32).toString('base64url');
   const clients = new Set<ServerResponse>();
@@ -58,11 +77,12 @@ export async function startPreviewServer({ port, stateDir, host = '127.0.0.1', p
   };
 
   let debounce: ReturnType<typeof setTimeout> | undefined;
-  const watcher: FSWatcher = watch(scenePath, () => {
+  const watcher: FSWatcher = watch(stateDir, (_event, filename) => {
+    if (filename !== 'state.json') return;
     clearTimeout(debounce);
     debounce = setTimeout(async () => {
       try {
-        const candidate = JSON.parse(await readFile(scenePath, 'utf8')) as Scene;
+        const candidate = await readCurrent();
         const current = store.current();
         if (JSON.stringify(candidate) === JSON.stringify(current)) return;
         broadcast(store.replace(candidate));
@@ -95,7 +115,10 @@ export async function startPreviewServer({ port, stateDir, host = '127.0.0.1', p
         const { revision } = (body ?? {}) as { revision?: unknown };
         if (!Number.isInteger(revision)) return json(response, 400, { error: { code: 'INVALID_REQUEST', message: 'revision must be an integer' } });
         const restored = store.markRenderFailed(revision as number);
-        await writeFile(scenePath, JSON.stringify(restored, null, 2));
+        const state = JSON.parse(await readFile(scenePath, 'utf8')) as { current: Scene; history: Scene[] };
+        state.current = restored;
+        state.history = [...state.history, restored].slice(-50);
+        await atomicJson(scenePath, state);
         broadcast(restored);
         return json(response, 200, { ok: true, scene: restored });
       } catch (error) {

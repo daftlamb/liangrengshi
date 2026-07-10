@@ -81,18 +81,45 @@ describe('motion-scene CLI', () => {
     }
   });
 
-  it('recovers compatible projections from authoritative state after projection failure', async () => {
+  it('commits despite projection failure, warns, and does not double apply on repair', async () => {
     const cwd = await sandbox();
     run(cwd, ['init']);
     const replacement = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
     replacement.composition.background = '#123456';
     await writeFile(path.join(cwd, 'replacement.json'), JSON.stringify(replacement));
     const failed = run(cwd, ['replace', '--file', 'replacement.json'], { MOTION_TEST_FAIL_PROJECTION: 'history.json' });
-    expect(failed.status).not.toBe(0);
+    expect(failed.status).toBe(0);
+    expect(failed.json).toMatchObject({ ok: true, revision: 1 });
+    expect((failed.json.warnings as string[]).join(' ')).toMatch(/projection/i);
     expect(run(cwd, ['status']).json).toMatchObject({ ok: true, revision: 1 });
     const state = JSON.parse(await readFile(path.join(cwd, '.motion-scene/state.json'), 'utf8'));
     expect(JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'))).toEqual(state.current);
     expect(JSON.parse(await readFile(path.join(cwd, '.motion-scene/history.json'), 'utf8'))).toEqual(state.history);
+  });
+
+  it('never falls back to projections or rewrites a corrupt authority', async () => {
+    const cwd = await sandbox();
+    run(cwd, ['init']);
+    const authority = path.join(cwd, '.motion-scene/state.json');
+    await writeFile(authority, '{broken');
+    const result = run(cwd, ['status']);
+    expect(result.status).not.toBe(0);
+    expect(result.json).toMatchObject({ ok: false, code: 'COMMAND_FAILED' });
+    expect(await readFile(authority, 'utf8')).toBe('{broken');
+  });
+
+  it('rejects inconsistent legacy projections during first migration', async () => {
+    const cwd = await sandbox();
+    run(cwd, ['init']);
+    const dir = path.join(cwd, '.motion-scene');
+    await rm(path.join(dir, 'state.json'));
+    const current = JSON.parse(await readFile(path.join(dir, 'current.json'), 'utf8'));
+    current.metadata.name = 'inconsistent';
+    await writeFile(path.join(dir, 'current.json'), JSON.stringify(current));
+    const result = run(cwd, ['status']);
+    expect(result.status).not.toBe(0);
+    expect(result.json.message).toMatch(/inconsistent/i);
+    await expect(readFile(path.join(dir, 'state.json'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('does not fetch an attacker-controlled metadata URL and replaces mismatched requested ports', async () => {

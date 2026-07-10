@@ -17,7 +17,7 @@ let server: PreviewServer;
 
 test.beforeAll(async () => {
   stateDir = await mkdtemp(path.join(tmpdir(), 'motion-preview-'));
-  await writeFile(path.join(stateDir, 'scene.json'), JSON.stringify(scene()));
+  await writeFile(path.join(stateDir, 'state.json'), JSON.stringify({ current: scene(), history: [scene()] }));
   server = await startPreviewServer({ port: 0, stateDir });
 });
 
@@ -54,7 +54,7 @@ test('keeps a minimal persistent preview connected and rolls back failed renders
   await page.evaluate(() => document.exitFullscreen());
 
   const navigationCount = await page.evaluate(() => performance.getEntriesByType('navigation').length);
-  await writeFile(path.join(stateDir, 'scene.json'), JSON.stringify(scene(1, 'Updated live')));
+  await writeFile(path.join(stateDir, 'state.json'), JSON.stringify({ current: scene(1, 'Updated live'), history: [scene(), scene(1, 'Updated live')] }));
   await expect(page.getByTestId('revision')).toHaveText('Revision 1');
   await expect(page.getByRole('heading')).toHaveText('Updated live');
   expect(await page.evaluate(() => performance.getEntriesByType('navigation').length)).toBe(navigationCount);

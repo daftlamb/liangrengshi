@@ -2,6 +2,7 @@
 import { open, mkdir, readFile, rename, rm } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -76,6 +77,7 @@ const warningsFor = (scene: Scene): string[] => {
   return cost.suggestedCount === undefined ? [] : [`Instance budget exceeded (${cost.instanceCount}); suggested maximum is ${cost.suggestedCount}`];
 };
 async function project(dir: string, state: State, allowTestFailure = false) {
+  if (allowTestFailure && process.env.MOTION_TEST_FAIL_PROJECTION === 'current.json') throw new Error('Injected current projection failure');
   await atomicJson(path.join(dir, 'current.json'), state.current);
   if (allowTestFailure && process.env.MOTION_TEST_FAIL_PROJECTION === 'history.json') throw new Error('Injected history projection failure');
   await atomicJson(path.join(dir, 'history.json'), state.history);
@@ -84,14 +86,20 @@ async function loadState(dir: string): Promise<State> {
   const authoritative = path.join(dir, 'state.json');
   let state: State;
   try { state = await readJson<State>(authoritative); }
-  catch { state = { current: await readJson<Scene>(path.join(dir, 'current.json')), history: await readJson<Scene[]>(path.join(dir, 'history.json')) }; await atomicJson(authoritative, state); }
-  await project(dir, state);
+  catch (error) {
+    if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 'ENOENT') throw error;
+    state = { current: await readJson<Scene>(path.join(dir, 'current.json')), history: await readJson<Scene[]>(path.join(dir, 'history.json')) };
+    if (!Array.isArray(state.history) || state.history.length === 0 || JSON.stringify(state.history.at(-1)) !== JSON.stringify(state.current)) throw new Error('Legacy current/history state is inconsistent');
+    await atomicJson(authoritative, state);
+  }
+  await project(dir, state).catch(() => undefined);
   return state;
 }
 async function persist(dir: string, current: Scene, history: Scene[]) {
   const state = { current, history };
   await atomicJson(path.join(dir, 'state.json'), state);
-  await project(dir, state, true);
+  try { await project(dir, state, true); return [] as string[]; }
+  catch (error) { return [`State committed, but compatibility projection repair failed: ${error instanceof Error ? error.message : String(error)}`]; }
 }
 
 function validInfo(value: unknown): value is ServerInfo {
@@ -99,9 +107,8 @@ function validInfo(value: unknown): value is ServerInfo {
   return !!x && Number.isInteger(x.pid) && (x.pid ?? 0) > 0 && Number.isInteger(x.port) && (x.port ?? 0) >= 1 && (x.port ?? 0) <= 65535
     && typeof x.identity === 'string' && x.identity.length >= 16 && typeof x.session === 'string' && x.session.length >= 16;
 }
-const live = (pid: number) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 async function healthy(info: ServerInfo): Promise<boolean> {
-  if (!validInfo(info) || !live(info.pid)) return false;
+  if (!validInfo(info)) return false;
   try {
     const response = await fetch(`http://127.0.0.1:${info.port}/api/health`, { signal: AbortSignal.timeout(500) });
     if (!response.ok) return false;
@@ -109,11 +116,20 @@ async function healthy(info: ServerInfo): Promise<boolean> {
     return body.identity === info.identity && body.session === info.session && body.pid === info.pid;
   } catch { return false; }
 }
-async function terminateOwned(info: ServerInfo) {
-  if (!await healthy(info)) return;
-  try { process.kill(info.pid, 'SIGTERM'); } catch { return; }
-  for (let i = 0; i < 20 && live(info.pid); i++) await new Promise(resolve => setTimeout(resolve, 25));
-  if (live(info.pid)) try { process.kill(info.pid, 'SIGKILL'); } catch { /* exited */ }
+async function waitForExit(child: ChildProcess, timeout: number) {
+  if (child.exitCode !== null || child.signalCode !== null) return true;
+  return new Promise<boolean>(resolve => {
+    const timer = setTimeout(() => { child.off('exit', exited); resolve(false); }, timeout);
+    const exited = () => { clearTimeout(timer); resolve(true); };
+    child.once('exit', exited);
+  });
+}
+async function terminateLaunched(child: ChildProcess) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  child.kill('SIGTERM');
+  if (await waitForExit(child, 500)) return;
+  child.kill('SIGKILL');
+  await waitForExit(child, 500);
 }
 async function serve(args: Args) {
   const dir = stateDirFor(args); const infoPath = path.join(dir, 'server.json');
@@ -122,7 +138,6 @@ async function serve(args: Args) {
   try {
     const existing = await readJson<unknown>(infoPath);
     if (validInfo(existing) && await healthy(existing) && (requested === 0 || requested === existing.port)) return { ok: true, ...existing, url: `http://127.0.0.1:${existing.port}/`, reused: true };
-    if (validInfo(existing)) await terminateOwned(existing);
   } catch { /* absent or malformed metadata */ }
   await rm(infoPath, { force: true });
   const identity = randomUUID(); const session = randomUUID();
@@ -133,7 +148,7 @@ async function serve(args: Args) {
     await new Promise(resolve => setTimeout(resolve, 50));
     try { const info = await readJson<unknown>(infoPath); if (validInfo(info) && info.pid === child.pid && info.identity === identity && await healthy(info)) return { ok: true, ...info, url: `http://127.0.0.1:${info.port}/`, reused: false }; } catch { /* retry */ }
   }
-  if (child.pid && live(child.pid)) try { process.kill(child.pid, 'SIGTERM'); } catch { /* exited */ }
+  await terminateLaunched(child);
   await rm(infoPath, { force: true });
   throw new Error('Preview server did not become healthy');
 }
@@ -150,7 +165,7 @@ async function main() {
   if (args.command === 'serve') return serve(args);
   if (args.command === 'init') {
     const seed = integer(one(args, 'seed', '1')!, '--seed', 0, 0xffffffff); const scene = createDefaultScene(one(args, 'name', 'Untitled')!, seed);
-    await persist(dir, scene, [scene]); return { ok: true, revision: scene.metadata.revision, warnings: warningsFor(scene) };
+    const projectionWarnings = await persist(dir, scene, [scene]); return { ok: true, revision: scene.metadata.revision, warnings: [...warningsFor(scene), ...projectionWarnings] };
   }
   if (args.command === 'validate') {
     const scene = one(args, 'file') ? await readJson<Scene>(path.resolve(one(args, 'file')!)) : (await loadState(dir)).current; const result = validateScene(scene);
@@ -162,7 +177,7 @@ async function main() {
   if (args.command === 'replace') scene = store.replace(await readJson<Scene>(path.resolve(one(args, 'file')!)));
   else if (args.command === 'patch') scene = store.apply(await readJson<Operation[]>(path.resolve(one(args, 'file')!)), (args.options.get('preserve') ?? []) as PreserveConstraint[]);
   else { if (state.history.length < 2) throw new Error('No revision to undo'); scene = structuredClone(state.history.at(-2)!); scene.metadata.revision = state.current.metadata.revision + 1; }
-  await persist(dir, scene, [...state.history, scene].slice(-50)); return { ok: true, revision: scene.metadata.revision, warnings: warningsFor(scene) };
+  const projectionWarnings = await persist(dir, scene, [...state.history, scene].slice(-50)); return { ok: true, revision: scene.metadata.revision, warnings: [...warningsFor(scene), ...projectionWarnings] };
 }
 
 main().then(result => { if (result) process.stdout.write(`${JSON.stringify(result)}\n`); }).catch(error => {
