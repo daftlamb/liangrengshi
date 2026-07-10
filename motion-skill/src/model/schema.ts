@@ -69,7 +69,11 @@ export const sceneSchema = z.object({
     if (!behaviorIds.has(binding.behaviorId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'behaviorId'], message: 'Unknown behavior reference' });
     binding.falloffIds.forEach((falloffId, falloffIndex) => { if (!falloffIds.has(falloffId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'falloffIds', falloffIndex], message: 'Unknown falloff reference' }); });
   }
-  scene.elements.forEach((element, index) => { if (element.type === 'group') element.childIds.forEach((childId) => { if (!elementIds.has(childId)) ctx.addIssue({ code: 'custom', path: ['elements', index, 'childIds'], message: 'Unknown child reference' }); }); });
+  scene.elements.forEach((element, index) => { if (element.type === 'group') {
+    if (element.childIds.includes(element.id)) ctx.addIssue({ code: 'custom', path: ['elements', index, 'childIds'], message: 'Group cannot reference itself' });
+    if (new Set(element.childIds).size !== element.childIds.length) ctx.addIssue({ code: 'custom', path: ['elements', index, 'childIds'], message: 'Group cannot contain duplicate child IDs' });
+    element.childIds.forEach((childId) => { if (!elementIds.has(childId)) ctx.addIssue({ code: 'custom', path: ['elements', index, 'childIds'], message: 'Unknown child reference' }); });
+  } });
   scene.generators.forEach((generator, index) => { if (generator.type === 'path' && !elementIds.has(generator.pathElementId)) ctx.addIssue({ code: 'custom', path: ['generators', index, 'pathElementId'], message: 'Unknown path reference' }); });
   scene.behaviors.forEach((behavior, index) => { if ('targetElementId' in behavior && !elementIds.has(behavior.targetElementId)) ctx.addIssue({ code: 'custom', path: ['behaviors', index, 'targetElementId'], message: 'Unknown target reference' }); });
 });
