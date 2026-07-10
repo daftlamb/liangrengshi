@@ -59,10 +59,19 @@ export class SceneStore {
   }
 
   markRenderFailed(revision: number): Scene {
-    this.failed.add(revision);
+    const active = this.snapshots.at(-1)!;
+    if (active.metadata.revision !== revision) throw new Error(`Revision ${revision} is not active`);
     const target = [...this.snapshots].reverse().find((scene) => scene.metadata.revision < revision && !this.failed.has(scene.metadata.revision));
     if (!target) throw new Error(`No safe revision exists below ${revision}`);
-    return this.accept(clone(target), [], this.current());
+    const restored = clone(target);
+    restored.metadata.revision = this.nextRevision;
+    assertValid(restored);
+
+    this.failed.add(revision);
+    this.nextRevision += 1;
+    this.snapshots.push(clone(restored));
+    if (this.snapshots.length > 50) this.snapshots.splice(0, this.snapshots.length - 50);
+    return clone(restored);
   }
 
   private accept(candidate: Scene, preserve: readonly PreserveConstraint[], before: Scene): Scene {

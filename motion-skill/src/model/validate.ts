@@ -21,9 +21,13 @@ const typeChannels: Record<Scene['elements'][number]['type'], ReadonlySet<string
 
 export function validateScene(scene: Scene): ValidationResult {
   const parsed = sceneSchema.safeParse(scene);
-  const errors = parsed.success ? [] : parsed.error.issues.map((issue) => `${issue.path.join('.') || 'scene'}: ${issue.message}`);
-  const elements = new Map(scene.elements.map((element) => [element.id, element]));
-  scene.animation.forEach((binding, index) => {
+  if (!parsed.success) return {
+    valid: false,
+    errors: parsed.error.issues.map((issue) => `${issue.path.join('.') || 'scene'}: ${issue.message}`),
+  };
+  const errors: string[] = [];
+  const elements = new Map(parsed.data.elements.map((element) => [element.id, element]));
+  parsed.data.animation.forEach((binding, index) => {
     const element = elements.get(binding.elementId);
     if (element) for (const channel of binding.channels) {
       if (!typeChannels[element.type].has(channel)) errors.push(`animation.${index}.channels: channel ${channel} is invalid for ${element.type}`);

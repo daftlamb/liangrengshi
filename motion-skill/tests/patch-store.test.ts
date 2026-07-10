@@ -16,6 +16,13 @@ function animatedScene(count = 10, behaviorType: 'wave' | 'spring' = 'wave'): Sc
 }
 
 describe('validateScene', () => {
+  it('returns schema errors for malformed runtime input without throwing', () => {
+    expect(() => validateScene({ metadata: null } as unknown as Scene)).not.toThrow();
+    const result = validateScene({ metadata: null } as unknown as Scene);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
   it('reports dangling references and duplicate IDs', () => {
     const scene = animatedScene();
     scene.elements.push({ id: 'box', type: 'circle', radius: 2 });
@@ -109,5 +116,32 @@ describe('SceneStore', () => {
     expect(restored.metadata.revision).toBeGreaterThan(2);
     expect(store.undo().metadata.revision).toBeGreaterThan(2);
     expect(store.current().composition.duration).not.toBe(6);
+  });
+
+  it('rejects a nonexistent failed revision atomically', () => {
+    const store = new SceneStore(animatedScene());
+    const before = store.current();
+    expect(() => store.markRenderFailed(999)).toThrow();
+    expect(store.current()).toEqual(before);
+    expect(store.apply([{ op: 'replace', path: '/composition/duration', value: 5 }], []).metadata.revision).toBe(1);
+  });
+
+  it('rejects an old non-active revision atomically', () => {
+    const store = new SceneStore(animatedScene());
+    store.apply([{ op: 'replace', path: '/composition/duration', value: 5 }], []);
+    const before = store.current();
+    expect(() => store.markRenderFailed(0)).toThrow();
+    expect(store.current()).toEqual(before);
+    expect(store.apply([{ op: 'replace', path: '/composition/duration', value: 6 }], []).metadata.revision).toBe(2);
+  });
+
+  it('rejects an active failed revision with no safe target atomically', () => {
+    const initial = animatedScene();
+    initial.metadata.revision = 1;
+    const store = new SceneStore(initial);
+    const before = store.current();
+    expect(() => store.markRenderFailed(1)).toThrow(/safe revision/i);
+    expect(store.current()).toEqual(before);
+    expect(store.apply([{ op: 'replace', path: '/composition/duration', value: 5 }], []).metadata.revision).toBe(2);
   });
 });
