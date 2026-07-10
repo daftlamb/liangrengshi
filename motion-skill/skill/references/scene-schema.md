@@ -27,7 +27,7 @@ All objects are strict in meaning even though unknown keys may parse. IDs are no
 }
 ```
 
-Metadata requires `schemaVersion: 1`, nonnegative integer `revision`, integer `seed`, and non-empty `name`. Composition requires positive `width`, `height`, and `duration`; a boolean `loop`; background string; and style `editorial`, `kinetic-type`, `geometric`, `organic`, or `chaotic`.
+Metadata requires `schemaVersion: 1`, nonnegative integer `revision`, integer `seed`, and non-empty `name`. Composition requires positive `width`, `height`, and `duration`; a boolean `loop`; a background color in explicit `#RGB` or `#RRGGBB` form; and style `editorial`, `kinetic-type`, `geometric`, `organic`, or `chaotic`. All element `fill` and `stroke` colors use those same two hex formats; named colors and other CSS color functions are not accepted.
 
 ## Elements
 
@@ -117,4 +117,4 @@ All falloffs accept optional easing `linear`, `easeIn`, `easeOut`, or `easeInOut
 ]
 ```
 
-An animation binding requires `id`, existing `elementId`, existing `behaviorId`, `falloffIds`, channels, and role. Valid channels are `x`, `y`, `rotation`, `scale`, `opacity`, `color`, `letterSpacing`, `lineHeight`, `cornerRadius`, `width`, `height`, and `pathProgress`. Numeric behavior output is added to position, rotation, typography, rectangle dimensions, corner radius, and path progress; scale and opacity use `base * (1 + output)`; color rotates hue by one half-turn per output unit. Falloff weight multiplies the output before composition. Dimensions are clamped nonnegative, opacity and path progress to 0–1. `pathProgress` draws a proportional line or closed-path perimeter. Element/channel compatibility is validated. A scene permits at most one `primary` and two `supporting` bindings; this is a hard v1 limit.
+An animation binding requires `id`, existing `elementId`, existing `behaviorId`, `falloffIds`, channels, and role. Valid channels are `x`, `y`, `rotation`, `scale`, `opacity`, `color`, `letterSpacing`, `lineHeight`, `cornerRadius`, `width`, `height`, and `pathProgress`. Numeric behavior output is added to position, rotation, typography, rectangle dimensions, corner radius, and path progress; scale and opacity use `base * (1 + output)`; color is parsed from hex, rotated numerically by one half-turn per output unit, and emitted deterministically as `#RRGGBB`. Falloff weight multiplies the output before composition. Dimensions are clamped nonnegative, opacity and path progress to 0–1. `pathProgress` draws a proportional line or closed-path perimeter. Element/channel compatibility is validated. A scene permits at most one `primary` and two `supporting` bindings; this is a hard v1 limit.

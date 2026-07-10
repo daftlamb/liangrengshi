@@ -35,6 +35,13 @@ describe('CanvasRenderer animated channels',()=>{
     expect(context.fillText).toHaveBeenCalledWith('B',expect.any(Number),0);
     expect(context.fillText).toHaveBeenCalledWith('C',expect.any(Number),20);
   });
+  it('applies letter spacing to grapheme clusters rather than code points',()=>{
+    const {renderer:r,context}=renderer();
+    r.render([{...text('e\u0301👩‍💻'),letterSpacing:2}] as RenderInstance[],composition);
+    expect(context.fillText).toHaveBeenCalledTimes(2);
+    expect(context.fillText).toHaveBeenNthCalledWith(1,'e\u0301',expect.any(Number),0);
+    expect(context.fillText).toHaveBeenNthCalledWith(2,'👩‍💻',expect.any(Number),0);
+  });
   it('uses animated rectangle dimensions and corner radius',()=>{
     const {renderer:r,context}=renderer();
     r.render([{id:'r',instanceId:'r:0',type:'rectangle',width:11,height:21,cornerRadius:4,x:0,y:0,rotation:0,scale:1,opacity:1}] as RenderInstance[],composition);

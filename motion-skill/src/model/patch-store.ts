@@ -26,7 +26,7 @@ function projection(scene: Scene, constraint: PreserveConstraint): unknown {
   if (constraint === 'content') return { name: scene.metadata.name, elements };
   if (constraint === 'timing') return {
     duration: scene.composition.duration, loop: scene.composition.loop,
-    behaviors:scene.behaviors.map(behavior=>({id:behavior.id,type:behavior.type,...('frequency' in behavior?{frequency:behavior.frequency}:{}),...('phase' in behavior?{phase:behavior.phase}:{}),...(behavior.type==='follow'?{targetElementId:behavior.targetElementId}: {})})),
+    behaviors:scene.behaviors.map(behavior=>({id:behavior.id,type:behavior.type,...('frequency' in behavior?{frequency:behavior.frequency}:{}),...('phase' in behavior?{phase:behavior.phase}:{}),...(behavior.type==='spring'?{stiffness:behavior.stiffness,damping:behavior.damping}:{}),...(behavior.type==='follow'?{targetElementId:behavior.targetElementId}: {})})),
     falloffs:scene.falloffs.filter(falloff=>falloff.type==='time'),
     animation:scene.animation.map(binding=>({id:binding.id,elementId:binding.elementId,behaviorId:binding.behaviorId,falloffIds:binding.falloffIds})),
   };

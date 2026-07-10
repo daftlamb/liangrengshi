@@ -25,6 +25,11 @@ describe('evaluateScene channel composition', () => {
     expect(item.type === 'text' && item.fill).not.toBe('#ff0000');
   });
 
+  it('interpolates shorthand hex colors numerically and deterministically', () => {
+    const [item] = evaluateScene(sceneFor({ id:'text', type:'text', text:'A', fill:'#f00' }, ['color']), frame);
+    expect(item.type === 'text' && item.fill).toBe('#00ffff');
+  });
+
   it('composes rectangle geometry additively and clamps it nonnegative', () => {
     const [item] = evaluateScene(sceneFor({ id: 'rect', type: 'rectangle', width: 10, height: 20, cornerRadius: 3 }, ['width', 'height', 'cornerRadius']), frame);
     expect(item).toMatchObject({ width: 11, height: 21, cornerRadius: 4 });

@@ -75,7 +75,7 @@ const finite=(value:number)=>Number.isFinite(value)?value:0;
 function rotateColor(color:string|undefined,turns:number):string|undefined {
   if(!color)return color;
   const match=/^#([\da-f]{3}|[\da-f]{6})$/i.exec(color);
-  if(!match)return `hsl(from ${color} calc(h + ${turns*360}) s l)`;
+  if(!match)throw new TypeError(`Unsupported color format: ${color}`);
   const hex=match[1]!.length===3?[...match[1]!].map(value=>value+value).join(''):match[1]!;
   const [r,g,b]=[0,2,4].map(index=>parseInt(hex.slice(index,index+2),16)/255);
   const max=Math.max(r,g,b),min=Math.min(r,g,b),light=(max+min)/2,d=max-min;

@@ -1,5 +1,6 @@
 import type { RenderInstance } from '../evaluate/scene';
 import type { Element, Scene } from '../model/schema';
+import { splitGraphemes } from '../text/graphemes';
 
 type Composition = Scene['composition'];
 
@@ -58,9 +59,10 @@ export class CanvasRenderer {
       if ((item.letterSpacing ?? 0) !== 0 || content.includes('\n')) {
         const spacing=item.letterSpacing??0,lines=content.split('\n'),lineHeight=item.lineHeight??item.fontSize??32;
         lines.forEach((line,lineIndex)=>{
-          const widths=[...line].map(character=>context.measureText(character).width);
+          const graphemes=splitGraphemes(line);
+          const widths=graphemes.map(character=>context.measureText(character).width);
           let cursor=-(widths.reduce((sum,width)=>sum+width,0)+Math.max(0,widths.length-1)*spacing)/2;
-          [...line].forEach((character,index)=>{context.fillText(character,cursor,lineIndex*lineHeight);cursor+=widths[index]!+spacing;});
+          graphemes.forEach((character,index)=>{context.fillText(character,cursor,lineIndex*lineHeight);cursor+=widths[index]!+spacing;});
         });
         return;
       }

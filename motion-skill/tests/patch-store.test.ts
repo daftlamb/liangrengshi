@@ -131,6 +131,16 @@ describe('SceneStore', () => {
     expect(new SceneStore(scene).apply([{ op:'replace', path:'/behaviors/0/amplitude', value:2 }], ['timing']).behaviors[0]).toMatchObject({ amplitude:2 });
   });
 
+  it('preserve timing protects spring stiffness and damping but allows unrelated changes', () => {
+    const scene = animatedScene();
+    scene.behaviors[0] = { id:'move', type:'spring', stiffness:80, damping:12 };
+    for (const operation of [
+      { op:'replace', path:'/behaviors/0/stiffness', value:90 },
+      { op:'replace', path:'/behaviors/0/damping', value:14 },
+    ] as const) expect(() => new SceneStore(scene).apply([operation], ['timing'])).toThrow(/preserve timing/i);
+    expect(new SceneStore(scene).apply([{ op:'replace', path:'/elements/0/fill', value:'#f00' }], ['timing']).elements[0]).toMatchObject({ fill:'#f00' });
+  });
+
   it('rejects invalid patches without changing the active scene', () => {
     const store = new SceneStore(animatedScene());
     const before = store.current();

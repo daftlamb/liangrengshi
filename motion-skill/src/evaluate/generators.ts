@@ -1,5 +1,7 @@
 import type { Element, Generator, Scene } from '../model/schema';
 import { createRandom } from '../math/random';
+import { splitGraphemes } from '../text/graphemes';
+export { splitGraphemes } from '../text/graphemes';
 
 type Point = { x: number; y: number };
 export interface InstanceContext {
@@ -15,19 +17,6 @@ function pieces(element: Element): Array<string | undefined> {
   if (element.split === 'words') return element.text.trim() ? element.text.trim().split(/\s+/u) : [];
   if (element.split === 'lines') return element.text.split(/\r?\n/u);
   return [element.text];
-}
-export function splitGraphemes(value: string, segmenter: Intl.Segmenter | null = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null): string[] {
-  if (segmenter) {
-    return Array.from(segmenter.segment(value), ({ segment }) => segment);
-  }
-  const result: string[] = [];
-  for (const character of value) {
-    if (/^\p{Mark}$/u.test(character) || /^[\uFE0E\uFE0F]$/u.test(character) || /^\p{Emoji_Modifier}$/u.test(character) || result.at(-1)?.endsWith('\u200d')) result[result.length - 1] += character;
-    else if (character === '\u200d' && result.length) result[result.length - 1] += character;
-    else if (/^\p{Regional_Indicator}$/u.test(character) && /^\p{Regional_Indicator}$/u.test(result.at(-1) ?? '')) result[result.length - 1] += character;
-    else result.push(character);
-  }
-  return result;
 }
 const interpolate = (a: number, b: number, t: number) => a + (b - a) * t;
 const progress = (index: number, count: number, start = 0, end = 1) => interpolate(start, end, count <= 1 ? 0 : index / (count - 1));

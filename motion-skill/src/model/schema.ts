@@ -3,15 +3,16 @@ import { z } from 'zod';
 const id = z.string().min(1);
 const finite = z.number().finite();
 const opacity = finite.min(0).max(1);
+const color = z.string().regex(/^#(?:[\da-f]{3}|[\da-f]{6})$/i, 'Color must be #RGB or #RRGGBB');
 const point = z.object({ x: finite, y: finite });
 const baseElement = { id, opacity: opacity.optional(), x: finite.optional(), y: finite.optional(), rotation: finite.optional(), scale: finite.nonnegative().optional() };
 
-const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'lines', 'words', 'characters']).optional(), fill: z.string().optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional(), letterSpacing: finite.optional(), lineHeight: finite.positive().optional() });
-const circleElement = z.object({ ...baseElement, type: z.literal('circle'), radius: finite.nonnegative(), fill: z.string().optional(), stroke: z.string().optional() });
-const rectangleElement = z.object({ ...baseElement, type: z.literal('rectangle'), width: finite.nonnegative(), height: finite.nonnegative(), cornerRadius: finite.nonnegative().optional(), fill: z.string().optional(), stroke: z.string().optional() });
-const lineElement = z.object({ ...baseElement, type: z.literal('line'), x2: finite, y2: finite, stroke: z.string().optional(), strokeWidth: finite.nonnegative().optional(), pathProgress: opacity.optional() });
-const polygonElement = z.object({ ...baseElement, type: z.literal('polygon'), points: z.array(point).min(3), fill: z.string().optional(), stroke: z.string().optional(), pathProgress: opacity.optional() });
-const starElement = z.object({ ...baseElement, type: z.literal('star'), points: z.number().int().min(2), innerRadius: finite.nonnegative(), outerRadius: finite.nonnegative(), fill: z.string().optional(), stroke: z.string().optional(), pathProgress: opacity.optional() });
+const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'lines', 'words', 'characters']).optional(), fill: color.optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional(), letterSpacing: finite.optional(), lineHeight: finite.positive().optional() });
+const circleElement = z.object({ ...baseElement, type: z.literal('circle'), radius: finite.nonnegative(), fill: color.optional(), stroke: color.optional() });
+const rectangleElement = z.object({ ...baseElement, type: z.literal('rectangle'), width: finite.nonnegative(), height: finite.nonnegative(), cornerRadius: finite.nonnegative().optional(), fill: color.optional(), stroke: color.optional() });
+const lineElement = z.object({ ...baseElement, type: z.literal('line'), x2: finite, y2: finite, stroke: color.optional(), strokeWidth: finite.nonnegative().optional(), pathProgress: opacity.optional() });
+const polygonElement = z.object({ ...baseElement, type: z.literal('polygon'), points: z.array(point).min(3), fill: color.optional(), stroke: color.optional(), pathProgress: opacity.optional() });
+const starElement = z.object({ ...baseElement, type: z.literal('star'), points: z.number().int().min(2), innerRadius: finite.nonnegative(), outerRadius: finite.nonnegative(), fill: color.optional(), stroke: color.optional(), pathProgress: opacity.optional() });
 const groupElement = z.object({ ...baseElement, type: z.literal('group'), childIds: z.array(id) });
 export const elementSchema = z.discriminatedUnion('type', [textElement, circleElement, rectangleElement, lineElement, polygonElement, starElement, groupElement]);
 
@@ -53,7 +54,7 @@ export const animationBindingSchema = z.object({
 
 export const sceneSchema = z.object({
   metadata: z.object({ schemaVersion: z.literal(1), revision: z.number().int().nonnegative(), seed: z.number().int(), name: z.string().min(1) }),
-  composition: z.object({ width: finite.positive(), height: finite.positive(), background: z.string(), duration: finite.positive(), loop: z.boolean(), style: z.enum(['editorial', 'kinetic-type', 'geometric', 'organic', 'chaotic']) }),
+  composition: z.object({ width: finite.positive(), height: finite.positive(), background: color, duration: finite.positive(), loop: z.boolean(), style: z.enum(['editorial', 'kinetic-type', 'geometric', 'organic', 'chaotic']) }),
   elements: z.array(elementSchema), generators: z.array(generatorSchema), behaviors: z.array(behaviorSchema), falloffs: z.array(falloffSchema), animation: z.array(animationBindingSchema),
 }).superRefine((scene, ctx) => {
   const elementIds = new Set(scene.elements.map(({ id }) => id));
