@@ -28,6 +28,8 @@ skill/scripts/preview.sh --state-dir .motion-scene --port 0
 
 The last command prints JSON containing the local preview `url`. Re-running it reuses a healthy server. The state directory contains authoritative `state.json` plus `current.json` and `history.json` compatibility projections; keep it stable for the lifetime of one conversation.
 
+Preview lifecycle tradeoff: v1 reuses a healthy preview recorded in the state directory, but does not discover or terminate older preview processes after that state directory is removed or moved. Stop those orphaned local processes manually when retiring a conversation state.
+
 ## CLI workflow
 
 Inspect and validate before changing a scene:

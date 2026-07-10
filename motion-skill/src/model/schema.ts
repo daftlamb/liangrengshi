@@ -6,12 +6,12 @@ const opacity = finite.min(0).max(1);
 const point = z.object({ x: finite, y: finite });
 const baseElement = { id, opacity: opacity.optional(), x: finite.optional(), y: finite.optional(), rotation: finite.optional(), scale: finite.nonnegative().optional() };
 
-const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'lines', 'words', 'characters']).optional(), fill: z.string().optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional() });
+const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'lines', 'words', 'characters']).optional(), fill: z.string().optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional(), letterSpacing: finite.optional(), lineHeight: finite.positive().optional() });
 const circleElement = z.object({ ...baseElement, type: z.literal('circle'), radius: finite.nonnegative(), fill: z.string().optional(), stroke: z.string().optional() });
 const rectangleElement = z.object({ ...baseElement, type: z.literal('rectangle'), width: finite.nonnegative(), height: finite.nonnegative(), cornerRadius: finite.nonnegative().optional(), fill: z.string().optional(), stroke: z.string().optional() });
-const lineElement = z.object({ ...baseElement, type: z.literal('line'), x2: finite, y2: finite, stroke: z.string().optional(), strokeWidth: finite.nonnegative().optional() });
-const polygonElement = z.object({ ...baseElement, type: z.literal('polygon'), points: z.array(point).min(3), fill: z.string().optional(), stroke: z.string().optional() });
-const starElement = z.object({ ...baseElement, type: z.literal('star'), points: z.number().int().min(2), innerRadius: finite.nonnegative(), outerRadius: finite.nonnegative(), fill: z.string().optional(), stroke: z.string().optional() });
+const lineElement = z.object({ ...baseElement, type: z.literal('line'), x2: finite, y2: finite, stroke: z.string().optional(), strokeWidth: finite.nonnegative().optional(), pathProgress: opacity.optional() });
+const polygonElement = z.object({ ...baseElement, type: z.literal('polygon'), points: z.array(point).min(3), fill: z.string().optional(), stroke: z.string().optional(), pathProgress: opacity.optional() });
+const starElement = z.object({ ...baseElement, type: z.literal('star'), points: z.number().int().min(2), innerRadius: finite.nonnegative(), outerRadius: finite.nonnegative(), fill: z.string().optional(), stroke: z.string().optional(), pathProgress: opacity.optional() });
 const groupElement = z.object({ ...baseElement, type: z.literal('group'), childIds: z.array(id) });
 export const elementSchema = z.discriminatedUnion('type', [textElement, circleElement, rectangleElement, lineElement, polygonElement, starElement, groupElement]);
 
@@ -69,6 +69,10 @@ export const sceneSchema = z.object({
     if (!elementIds.has(binding.elementId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'elementId'], message: 'Unknown element reference' });
     if (!behaviorIds.has(binding.behaviorId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'behaviorId'], message: 'Unknown behavior reference' });
     binding.falloffIds.forEach((falloffId, falloffIndex) => { if (!falloffIds.has(falloffId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'falloffIds', falloffIndex], message: 'Unknown falloff reference' }); });
+    const element=scene.elements.find(item=>item.id===binding.elementId);
+    const common=['x','y','rotation','scale','opacity'];
+    const allowed:Record<Element['type'],string[]>={text:[...common,'color','letterSpacing','lineHeight'],circle:[...common,'color'],rectangle:[...common,'color','cornerRadius','width','height'],line:[...common,'color','pathProgress'],polygon:[...common,'color','pathProgress'],star:[...common,'color','pathProgress'],group:common};
+    if(element)binding.channels.forEach((channel,channelIndex)=>{if(!allowed[element.type].includes(channel))ctx.addIssue({code:'custom',path:['animation',index,'channels',channelIndex],message:`Channel ${channel} is invalid for ${element.type}`});});
   }
   scene.elements.forEach((element, index) => { if (element.type === 'group') {
     if (element.childIds.includes(element.id)) ctx.addIssue({ code: 'custom', path: ['elements', index, 'childIds'], message: 'Group cannot reference itself' });

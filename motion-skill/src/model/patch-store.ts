@@ -12,17 +12,24 @@ const canonical = (value: unknown): string => JSON.stringify(value, (_key, item)
 function projection(scene: Scene, constraint: PreserveConstraint): unknown {
   const elements = scene.elements.map((element) => {
     const { id, type } = element;
-    if (constraint === 'layout') return { id, type, x: element.x, y: element.y, rotation: element.rotation,
-      ...('width' in element ? { width: element.width } : {}), ...('height' in element ? { height: element.height } : {}),
-      ...('radius' in element ? { radius: element.radius } : {}) };
+    if (constraint === 'layout') {
+      const layout:Record<string,unknown>={...element};
+      delete layout.opacity; delete layout.fill; delete layout.stroke; delete layout.text; delete layout.fontFamily;
+      return layout;
+    }
     if (constraint === 'palette') return { id, ...('fill' in element ? { fill: element.fill } : {}), ...('stroke' in element ? { stroke: element.stroke } : {}), opacity: element.opacity };
     if (constraint === 'content') return { id, type, ...('text' in element ? { text: element.text } : {}), ...('childIds' in element ? { childIds: element.childIds } : {}) };
     return undefined;
   });
-  if (constraint === 'layout') return { width: scene.composition.width, height: scene.composition.height, elements };
+  if (constraint === 'layout') return { width: scene.composition.width, height: scene.composition.height, elements, generators:scene.generators };
   if (constraint === 'palette') return { background: scene.composition.background, elements };
   if (constraint === 'content') return { name: scene.metadata.name, elements };
-  if (constraint === 'timing') return { duration: scene.composition.duration, loop: scene.composition.loop };
+  if (constraint === 'timing') return {
+    duration: scene.composition.duration, loop: scene.composition.loop,
+    behaviors:scene.behaviors.map(behavior=>({id:behavior.id,type:behavior.type,...('frequency' in behavior?{frequency:behavior.frequency}:{}),...('phase' in behavior?{phase:behavior.phase}:{}),...(behavior.type==='follow'?{targetElementId:behavior.targetElementId}: {})})),
+    falloffs:scene.falloffs.filter(falloff=>falloff.type==='time'),
+    animation:scene.animation.map(binding=>({id:binding.id,elementId:binding.elementId,behaviorId:binding.behaviorId,falloffIds:binding.falloffIds})),
+  };
   return { seed: scene.metadata.seed, generators: scene.generators, behaviors: scene.behaviors, falloffs: scene.falloffs, animation: scene.animation };
 }
 

@@ -1,11 +1,39 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateBehavior, type BehaviorContext } from '../src/evaluate/behaviors';
 import type { Behavior } from '../src/model/schema';
+import { evaluateScene } from '../src/evaluate/scene';
+import { createDefaultScene } from '../src/model/defaults';
+import type { Scene } from '../src/model/schema';
 
 const context = (time=0, index=0, overrides:Partial<BehaviorContext>={}):BehaviorContext => ({
   time, delta:1/60, pointer:{x:0,y:0,active:false}, index, count:4,
   position:{x:0,y:0}, baseTransform:{x:0,y:0,rotation:0},
   target:{x:10,y:0}, ...overrides,
+});
+
+describe('evaluateScene channel composition', () => {
+  const sceneFor = (element: Scene['elements'][number], channels: Scene['animation'][number]['channels']): Scene => ({
+    ...createDefaultScene('channels', 1), elements: [element], generators: [],
+    behaviors: [{ id: 'wave', type: 'wave', amplitude: 1, frequency: 1 }], falloffs: [],
+    animation: [{ id: 'binding', elementId: element.id, behaviorId: 'wave', falloffIds: [], channels, role: 'primary' }],
+  });
+  const frame = { time: .25, delta: 1 / 60, pointer: { x: 0, y: 0, active: false } };
+
+  it('composes typography and color channels into render instances', () => {
+    const [item] = evaluateScene(sceneFor({ id: 'text', type: 'text', text: 'AB', fill: '#ff0000', letterSpacing: 2, lineHeight: 20 }, ['color', 'letterSpacing', 'lineHeight']), frame);
+    expect(item).toMatchObject({ letterSpacing: 3, lineHeight: 21 });
+    expect(item.type === 'text' && item.fill).not.toBe('#ff0000');
+  });
+
+  it('composes rectangle geometry additively and clamps it nonnegative', () => {
+    const [item] = evaluateScene(sceneFor({ id: 'rect', type: 'rectangle', width: 10, height: 20, cornerRadius: 3 }, ['width', 'height', 'cornerRadius']), frame);
+    expect(item).toMatchObject({ width: 11, height: 21, cornerRadius: 4 });
+  });
+
+  it('composes path progress additively and clamps it to zero through one', () => {
+    const [item] = evaluateScene(sceneFor({ id: 'line', type: 'line', x2: 100, y2: 0, pathProgress: 0 }, ['pathProgress']), frame);
+    expect(item).toMatchObject({ pathProgress: 1 });
+  });
 });
 const behavior = (value:object) => value as Behavior;
 

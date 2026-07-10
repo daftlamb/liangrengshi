@@ -42,7 +42,9 @@ function generatorCount(generator: Scene['generators'][number]): number {
 }
 
 export function estimateSceneCost(scene: Scene): CostReport {
-  const instanceCount = scene.generators.reduce((total, generator) => total + generatorCount(generator), 0) || scene.elements.length;
+  const generatedIds=new Set(scene.generators.map(generator=>generator.elementId));
+  const singletonCount=scene.elements.filter(element=>element.type!=='group'&&!generatedIds.has(element.id)).length;
+  const instanceCount = scene.generators.reduce((total, generator) => total + generatorCount(generator), singletonCount);
   const behaviorById = new Map(scene.behaviors.map((behavior) => [behavior.id, behavior]));
   const compound = scene.animation.some((binding) => {
     const behavior = behaviorById.get(binding.behaviorId);
