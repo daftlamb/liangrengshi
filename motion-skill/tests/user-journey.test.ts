@@ -16,7 +16,8 @@ function run(cwd: string, args: string[]) {
   return { ...result, json };
 }
 
-const frame = (scene: Scene) => evaluateScene(scene, { time: scene.composition.duration / 3, delta: 1 / 60, pointer: { x: 480, y: 270, active: false } });
+const evaluationTime = 2.75;
+const frame = (scene: Scene) => evaluateScene(scene, { time: evaluationTime, delta: 1 / 60, pointer: { x: 480, y: 270, active: false } });
 const withoutRevision = (scene: Scene) => ({ ...scene, metadata: { ...scene.metadata, revision: 0 } });
 const active = async (stateDir: string) => JSON.parse(await readFile(path.join(stateDir, 'current.json'), 'utf8')) as Scene;
 const writeJson = (filename: string, value: unknown) => writeFile(filename, `${JSON.stringify(value)}\n`);
@@ -66,7 +67,31 @@ describe('complete CLI user journey', () => {
     expect(run(cwd, ['patch', '--file', noisePatch, '--preserve', 'layout', '--preserve', 'content', '--preserve', 'palette', '--state-dir', stateDir]).status).toBe(0);
     const noisy = await active(stateDir);
     expect(noisy.behaviors).toContainEqual(expect.objectContaining({ id: 'timing-noise', seed: 4242 }));
-    expect(frame(noisy)).toEqual(frame(noisy));
+    const noisyFrame = frame(noisy);
+    const recoloredFrame = frame(recolored);
+    const changedInstances: string[] = [];
+    expect(noisyFrame).toHaveLength(recoloredFrame.length);
+    noisyFrame.forEach((instance, index) => {
+      const baseline = recoloredFrame[index];
+      expect(instance.instanceId).toBe(baseline.instanceId);
+      if (instance.rotation !== baseline.rotation) changedInstances.push(instance.instanceId);
+      expect({ ...instance, rotation: baseline.rotation }).toEqual(baseline);
+    });
+    expect(changedInstances.length).toBeGreaterThan(0);
+    expect(changedInstances.every(instanceId => instanceId.startsWith('letters:'))).toBe(true);
+
+    const reloaded = await active(stateDir);
+    expect(frame(reloaded)).toEqual(noisyFrame);
+    const alternateSeed = structuredClone(noisy);
+    const alternateNoise = alternateSeed.behaviors.find(behavior => behavior.id === 'timing-noise');
+    if (!alternateNoise || alternateNoise.type !== 'noise') throw new Error('missing journey noise behavior');
+    alternateNoise.seed = 4243;
+    expect(frame(alternateSeed)).not.toEqual(noisyFrame);
+
+    const strippedNoise = structuredClone(noisy);
+    strippedNoise.behaviors = strippedNoise.behaviors.filter(behavior => behavior.id !== 'timing-noise');
+    strippedNoise.animation = strippedNoise.animation.filter(binding => binding.id !== 'noisy-rotation');
+    expect(withoutRevision(strippedNoise)).toEqual(withoutRevision(recolored));
 
     expect(run(cwd, ['undo', '--state-dir', stateDir]).status).toBe(0);
     const undone = await active(stateDir);
