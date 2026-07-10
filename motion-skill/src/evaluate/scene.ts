@@ -41,8 +41,8 @@ export function evaluateScene(scene:Scene,frame:FrameContext):RenderInstance[]{
       for(const binding of bindings){
         const behavior=behaviorById.get(binding.behaviorId);
         if(!behavior) throw new Error(`Missing behavior reference ${binding.behaviorId}`);
-        const target='targetElementId' in behavior?byId.get(behavior.targetElementId):undefined;
-        if('targetElementId' in behavior&&!target) throw new Error(`Missing target reference ${behavior.targetElementId}`);
+        const target='targetElementId' in behavior&&behavior.targetElementId?byId.get(behavior.targetElementId):undefined;
+        if('targetElementId' in behavior&&behavior.targetElementId&&!target) throw new Error(`Missing target reference ${behavior.targetElementId}`);
         const targetTransform=target?world.get(target.id):undefined;
         const delta=evaluateBehavior(behavior,{...frame,time,index:instance.index,count:instance.count,position:{x,y},baseTransform:instance.baseTransform,target:targetTransform?{x:targetTransform.x,y:targetTransform.y}:undefined});
         const falloffs=binding.falloffIds.map(id=>{const falloff=falloffById.get(id);if(!falloff)throw new Error(`Missing falloff reference ${id}`);return falloff;});

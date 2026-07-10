@@ -2,6 +2,8 @@ import { expect, test } from 'playwright/test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import type { Scene } from '../src/model/schema';
 import { startPreviewServer, type PreviewServer } from '../src/runtime/server';
 
@@ -133,24 +135,63 @@ const acceptanceNames = [
   '05-organic-dot-field', '06-following-lines', '07-progressive-stars', '08-swiss-poster',
 ] as const;
 
+type MotionTest = {
+  renderAt(time: number, pointer?: { x: number; y: number; active?: boolean }): void;
+  lastRenderedTime: number | null;
+  revision: number | null;
+  instances: Array<{ instanceId: string; x: number; y: number }>;
+};
+const renderAt = async (page: import('playwright/test').Page, time: number, pointer?: { x: number; y: number; active?: boolean }) => {
+  await page.evaluate(async ({ time, pointer }) => {
+    await document.fonts.ready;
+    (window as unknown as { __motionTest: MotionTest }).__motionTest.renderAt(time, pointer);
+  }, { time, pointer });
+  const rendered = await page.evaluate(() => {
+    const hook = (window as unknown as { __motionTest: MotionTest }).__motionTest;
+    return { time: hook.lastRenderedTime, revision: hook.revision };
+  });
+  expect(rendered.time).toBe(time);
+  expect(rendered.revision).toEqual(expect.any(Number));
+};
+const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
+
+test('03-pointer-repel-grid follows pointer motion inside the canvas', async ({ page }) => {
+  const fixture = JSON.parse(await readFile(path.join(import.meta.dirname, '..', 'examples', '03-pointer-repel-grid.json'), 'utf8')) as Scene;
+  await writeFile(path.join(stateDir, 'state.json'), JSON.stringify({ current: fixture, history: [fixture] }));
+  await page.goto(server.url);
+  await expect(page.getByRole('heading')).toHaveText(fixture.metadata.name);
+  await page.evaluate(() => document.fonts.ready);
+  const canvas = page.locator('canvas');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width * .25, box!.y + box!.height * .3);
+  await renderAt(page, 0);
+  const first = await page.evaluate(() => (window as unknown as { __motionTest: MotionTest }).__motionTest.instances.map(({ instanceId, x, y }) => ({ instanceId, x, y })));
+  const firstImage = await canvas.screenshot();
+  await page.mouse.move(box!.x + box!.width * .75, box!.y + box!.height * .7);
+  await renderAt(page, 0);
+  const second = await page.evaluate(() => (window as unknown as { __motionTest: MotionTest }).__motionTest.instances.map(({ instanceId, x, y }) => ({ instanceId, x, y })));
+  const secondImage = await canvas.screenshot();
+  expect(second).not.toEqual(first);
+  expect(hash(secondImage)).not.toBe(hash(firstImage));
+});
+
 for (const fixtureName of acceptanceNames) {
   test(`${fixtureName} has deterministic timestamp snapshots`, async ({ page }) => {
     const fixture = JSON.parse(await readFile(path.join(import.meta.dirname, '..', 'examples', `${fixtureName}.json`), 'utf8')) as Scene;
     await writeFile(path.join(stateDir, 'state.json'), JSON.stringify({ current: fixture, history: [fixture] }));
-    await page.addInitScript(() => {
-      let frozenTime = 0;
-      const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
-      Object.defineProperty(Performance.prototype, 'now', { configurable: true, value: () => frozenTime });
-      Object.defineProperty(window, 'requestAnimationFrame', { configurable: true, value: (callback: FrameRequestCallback) => nativeRequestAnimationFrame(() => callback(frozenTime)) });
-      Object.defineProperty(window, '__setMotionTime', { value: (milliseconds: number) => { frozenTime = milliseconds; } });
-    });
     await page.goto(server.url);
     await expect(page.getByRole('heading')).toHaveText(fixture.metadata.name);
+    await page.evaluate(() => document.fonts.ready);
     const canvas = page.locator('canvas');
+    const images: Buffer[] = [];
     for (const [label, time] of [['t0', 0], ['t-quarter', fixture.composition.duration / 4], ['t-half', fixture.composition.duration / 2]] as const) {
-      await page.evaluate(milliseconds => (window as unknown as { __setMotionTime(value: number): void }).__setMotionTime(milliseconds), time * 1000);
-      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      await renderAt(page, time, { x: 480, y: 270, active: true });
+      images.push(await canvas.screenshot());
       await expect(canvas).toHaveScreenshot(`${fixtureName}-${label}.png`, { animations: 'disabled', maxDiffPixelRatio: 0.001 });
+    }
+    if (fixtureName !== '03-pointer-repel-grid' && fixtureName !== '06-following-lines') {
+      expect(hash(images[1])).not.toBe(hash(images[0]));
     }
   });
 }

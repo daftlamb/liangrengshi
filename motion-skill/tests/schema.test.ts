@@ -61,7 +61,7 @@ describe('sceneSchema', () => {
       { id: 'star', type: 'star', points: 5, innerRadius: 1, outerRadius: 2 }, { id: 'group', type: 'group', childIds: ['title'] },
     ];
     const generators = [{ id: 'gl', type: 'linear', elementId: 'title' }, { id: 'gg', type: 'grid', elementId: 'circle' }, { id: 'gr', type: 'radial', elementId: 'rectangle' }, { id: 'gp', type: 'path', elementId: 'polygon', pathElementId: 'line' }, { id: 'gs', type: 'scatter', elementId: 'star', seed: 1 }];
-    const behaviors = [{ id: 'wave', type: 'wave' }, { id: 'noise', type: 'noise', seed: 1 }, { id: 'spring', type: 'spring' }, { id: 'follow', type: 'follow', targetElementId: 'title' }, { id: 'look', type: 'lookAt', targetElementId: 'title' }, { id: 'attract', type: 'attract', targetElementId: 'title' }, { id: 'repel', type: 'repel', targetElementId: 'title' }];
+    const behaviors = [{ id: 'wave', type: 'wave' }, { id: 'noise', type: 'noise', seed: 1 }, { id: 'spring', type: 'spring' }, { id: 'follow', type: 'follow', targetElementId: 'title' }, { id: 'look', type: 'lookAt', targetElementId: 'title' }, { id: 'attract', type: 'attract', targetElementId: 'title' }, { id: 'repel', type: 'repel' }];
     const falloffs = [{ id: 'fl', type: 'linear' }, { id: 'fr', type: 'radial' }, { id: 'fi', type: 'index' }, { id: 'fx', type: 'random', seed: 1 }, { id: 'ft', type: 'time' }];
     expect(sceneSchema.safeParse({ ...minimalScene, elements, generators, behaviors, falloffs }).success).toBe(true);
   });

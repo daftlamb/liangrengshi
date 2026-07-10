@@ -28,3 +28,10 @@
 - Text fixtures specify `Arial, sans-serif`; the baselines are platform-qualified by Playwright (`-darwin`) and were confirmed stable in the pinned Chromium environment by a fresh no-update run.
 - Canvas-only snapshots exclude host connection text and other preview chrome.
 - `motion-skill/dist`, `motion-skill/test-results`, dependency directories, and pre-existing lockfile modifications are excluded from the commit.
+
+## Review follow-up
+
+- Corrected the pointer-repel fixture to use the active pointer and added an E2E assertion that two real canvas pointer moves change both evaluated instance positions and rendered image hashes.
+- Added pinned `@fontsource/inter` WOFF2 packaging under the fixture-only `Inter Motion` family and wait for `document.fonts.ready` before capture.
+- Replaced RAF clock mutation with the synchronous `window.__motionTest.renderAt(time, pointer?)` hook, including exact rendered-time, scene-revision, and evaluated-instance observability.
+- Switched snapshot paths to platform-independent names, regenerated all 24 baselines, and added timestamp image-hash assertions for animated scenes.

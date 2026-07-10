@@ -1,6 +1,7 @@
 import { evaluateScene } from '../evaluate/scene';
 import type { Scene } from '../model/schema';
 import { CanvasRenderer } from '../render/canvas-renderer';
+import './font.css';
 
 const canvas = document.querySelector('canvas')!;
 const renderer = new CanvasRenderer(canvas);
@@ -17,6 +18,38 @@ let reconnectAttempt = 0;
 let sessionToken: string | undefined;
 const failureReports = new Map<number, Promise<void>>();
 const pointer = { x: 0, y: 0, active: false };
+let lastRenderedTime: number | null = null;
+let lastRenderedRevision: number | null = null;
+let lastInstances: ReturnType<typeof evaluateScene> = [];
+
+declare global {
+  interface Window {
+    __motionTest: {
+      renderAt(time: number, nextPointer?: { x: number; y: number; active?: boolean }): void;
+      readonly lastRenderedTime: number | null;
+      readonly revision: number | null;
+      readonly instances: ReturnType<typeof evaluateScene>;
+    };
+  }
+}
+
+const renderAt = (time: number, nextPointer?: { x: number; y: number; active?: boolean }) => {
+  if (!scene) throw new Error('Scene is not ready');
+  playing = false;
+  pausedAt = time;
+  if (nextPointer) Object.assign(pointer, nextPointer, { active: nextPointer.active ?? true });
+  lastInstances = evaluateScene(scene, { time, delta: 1 / 60, pointer: { ...pointer } });
+  renderer.render(lastInstances, scene.composition, scene.metadata.revision);
+  lastRenderedTime = time;
+  lastRenderedRevision = scene.metadata.revision;
+};
+
+Object.defineProperty(window, '__motionTest', { value: {
+  renderAt,
+  get lastRenderedTime() { return lastRenderedTime; },
+  get revision() { return lastRenderedRevision; },
+  get instances() { return lastInstances; },
+} });
 
 const applyScene = (next: Scene) => { scene = next; title.textContent = next.metadata.name; revision.textContent = `Revision ${next.metadata.revision}`; };
 const fetchScene = async (): Promise<void> => {
@@ -59,7 +92,11 @@ const reportFailure = (failedScene: Scene, error: unknown): Promise<void> => {
 function frame(now: number) {
   if (scene) {
     const elapsed = playing ? (now - started) / 1000 : pausedAt;
-    try { renderer.render(evaluateScene(scene, { time: elapsed, delta: Math.min((now - previous) / 1000, .1), pointer }), scene.composition, scene.metadata.revision); }
+    try {
+      lastInstances = evaluateScene(scene, { time: elapsed, delta: Math.min((now - previous) / 1000, .1), pointer });
+      renderer.render(lastInstances, scene.composition, scene.metadata.revision);
+      lastRenderedTime = elapsed; lastRenderedRevision = scene.metadata.revision;
+    }
     catch (error) { const failedScene = scene; scene = undefined; void reportFailure(failedScene, error); }
   }
   previous = now;

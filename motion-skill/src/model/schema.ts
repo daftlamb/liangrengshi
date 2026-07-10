@@ -32,7 +32,7 @@ export const behaviorSchema = z.discriminatedUnion('type', [
   z.object({ ...behaviorBase, type: z.literal('follow'), targetElementId: id }),
   z.object({ ...behaviorBase, type: z.literal('lookAt'), targetElementId: id }),
   z.object({ ...behaviorBase, type: z.literal('attract'), targetElementId: id, strength: finite.optional() }),
-  z.object({ ...behaviorBase, type: z.literal('repel'), targetElementId: id, strength: finite.optional() }),
+  z.object({ ...behaviorBase, type: z.literal('repel'), targetElementId: id.optional(), strength: finite.optional() }),
 ]);
 
 const clamp = z.tuple([opacity, opacity]).refine(([minimum, maximum]) => minimum <= maximum, { message: 'Clamp minimum must not exceed maximum' });
