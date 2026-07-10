@@ -6,6 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:journey": "vitest run tests/user-journey.test.ts",
     "test:e2e": "playwright test",
     "dev": "vite",
     "build": "vite build",
