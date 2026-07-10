@@ -19,9 +19,29 @@ describe('sceneSchema', () => {
     const key = type === 'scatter' ? 'generators' : 'falloffs';
     expect(sceneSchema.safeParse({ ...minimalScene, [key]: [{ id: 'randomized', type }] }).success).toBe(false);
   });
-  it('rejects more than three default behaviors', () => {
+  it('allows more than three behaviors when they are not all bound', () => {
     const behaviors = Array.from({ length: 4 }, (_, index) => ({ id: `b${index}`, type: 'wave', amplitude: 1, frequency: 1, phase: 0 }));
-    expect(sceneSchema.safeParse({ ...minimalScene, behaviors }).success).toBe(false);
+    expect(sceneSchema.safeParse({ ...minimalScene, behaviors }).success).toBe(true);
+  });
+  it('limits bindings to one primary and two supporting roles', () => {
+    const behaviors = Array.from({ length: 4 }, (_, index) => ({ id: `b${index}`, type: 'wave' as const }));
+    const binding = (index: number, role: 'primary' | 'supporting') => ({ id: `a${index}`, elementId: 'title', behaviorId: `b${index}`, falloffIds: [], channels: ['x'] as const, role });
+    expect(sceneSchema.safeParse({ ...minimalScene, behaviors, animation: [binding(0, 'primary'), binding(1, 'supporting'), binding(2, 'supporting')] }).success).toBe(true);
+    expect(sceneSchema.safeParse({ ...minimalScene, behaviors, animation: [binding(0, 'primary'), binding(1, 'primary')] }).success).toBe(false);
+    expect(sceneSchema.safeParse({ ...minimalScene, behaviors, animation: [binding(0, 'supporting'), binding(1, 'supporting'), binding(2, 'supporting')] }).success).toBe(false);
+  });
+  it('rejects unseeded noise behavior', () => expect(sceneSchema.safeParse({ ...minimalScene, behaviors: [{ id: 'noise', type: 'noise' }] }).success).toBe(false));
+
+  it('accepts every discriminated union variant', () => {
+    const elements = [
+      minimalScene.elements[0], { id: 'circle', type: 'circle', radius: 2 }, { id: 'rectangle', type: 'rectangle', width: 2, height: 3 },
+      { id: 'line', type: 'line', x2: 2, y2: 3 }, { id: 'polygon', type: 'polygon', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] },
+      { id: 'star', type: 'star', points: 5, innerRadius: 1, outerRadius: 2 }, { id: 'group', type: 'group', childIds: ['title'] },
+    ];
+    const generators = [{ id: 'gl', type: 'linear' }, { id: 'gg', type: 'grid' }, { id: 'gr', type: 'radial' }, { id: 'gp', type: 'path', pathElementId: 'line' }, { id: 'gs', type: 'scatter', seed: 1 }];
+    const behaviors = [{ id: 'wave', type: 'wave' }, { id: 'noise', type: 'noise', seed: 1 }, { id: 'spring', type: 'spring' }, { id: 'follow', type: 'follow', targetElementId: 'title' }, { id: 'look', type: 'lookAt', targetElementId: 'title' }, { id: 'attract', type: 'attract', targetElementId: 'title' }, { id: 'repel', type: 'repel', targetElementId: 'title' }];
+    const falloffs = [{ id: 'fl', type: 'linear' }, { id: 'fr', type: 'radial' }, { id: 'fi', type: 'index' }, { id: 'fx', type: 'random', seed: 1 }, { id: 'ft', type: 'time' }];
+    expect(sceneSchema.safeParse({ ...minimalScene, elements, generators, behaviors, falloffs }).success).toBe(true);
   });
 });
 
@@ -33,4 +53,5 @@ describe('createDefaultScene', () => {
       elements: [], generators: [], behaviors: [], falloffs: [], animation: [],
     });
   });
+  it('rejects an empty name', () => expect(() => createDefaultScene('', 7)).toThrow());
 });

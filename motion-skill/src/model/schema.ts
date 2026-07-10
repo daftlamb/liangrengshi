@@ -27,7 +27,7 @@ export const generatorSchema = z.discriminatedUnion('type', [
 const behaviorBase = { id };
 export const behaviorSchema = z.discriminatedUnion('type', [
   z.object({ ...behaviorBase, type: z.literal('wave'), amplitude: finite.optional(), frequency: finite.optional(), phase: finite.optional() }),
-  z.object({ ...behaviorBase, type: z.literal('noise'), amplitude: finite.optional(), frequency: finite.optional(), seed: z.number().int().optional() }),
+  z.object({ ...behaviorBase, type: z.literal('noise'), amplitude: finite.optional(), frequency: finite.optional(), seed: z.number().int() }),
   z.object({ ...behaviorBase, type: z.literal('spring'), stiffness: finite.nonnegative().optional(), damping: finite.nonnegative().optional() }),
   z.object({ ...behaviorBase, type: z.literal('follow'), targetElementId: id }),
   z.object({ ...behaviorBase, type: z.literal('lookAt'), targetElementId: id }),
@@ -53,13 +53,17 @@ export const animationBindingSchema = z.object({
 export const sceneSchema = z.object({
   metadata: z.object({ schemaVersion: z.literal(1), revision: z.number().int().nonnegative(), seed: z.number().int(), name: z.string().min(1) }),
   composition: z.object({ width: finite.positive(), height: finite.positive(), background: z.string(), duration: finite.positive(), loop: z.boolean(), style: z.enum(['editorial', 'kinetic-type', 'geometric', 'organic', 'chaotic']) }),
-  elements: z.array(elementSchema), generators: z.array(generatorSchema), behaviors: z.array(behaviorSchema).max(3), falloffs: z.array(falloffSchema), animation: z.array(animationBindingSchema),
+  elements: z.array(elementSchema), generators: z.array(generatorSchema), behaviors: z.array(behaviorSchema), falloffs: z.array(falloffSchema), animation: z.array(animationBindingSchema),
 }).superRefine((scene, ctx) => {
   const elementIds = new Set(scene.elements.map(({ id }) => id));
   const behaviorIds = new Set(scene.behaviors.map(({ id }) => id));
   const falloffIds = new Set(scene.falloffs.map(({ id }) => id));
   const allIds = [...scene.elements, ...scene.generators, ...scene.behaviors, ...scene.falloffs, ...scene.animation].map(({ id }) => id);
   if (new Set(allIds).size !== allIds.length) ctx.addIssue({ code: 'custom', message: 'IDs must be unique' });
+  const primaryBindings = scene.animation.filter(({ role }) => role === 'primary').length;
+  const supportingBindings = scene.animation.filter(({ role }) => role === 'supporting').length;
+  if (primaryBindings > 1) ctx.addIssue({ code: 'custom', path: ['animation'], message: 'At most one primary animation binding is allowed' });
+  if (supportingBindings > 2) ctx.addIssue({ code: 'custom', path: ['animation'], message: 'At most two supporting animation bindings are allowed' });
   for (const [index, binding] of scene.animation.entries()) {
     if (!elementIds.has(binding.elementId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'elementId'], message: 'Unknown element reference' });
     if (!behaviorIds.has(binding.behaviorId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'behaviorId'], message: 'Unknown behavior reference' });

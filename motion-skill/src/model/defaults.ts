@@ -1,6 +1,7 @@
 import type { Scene } from './schema';
 
 export function createDefaultScene(name: string, seed: number): Scene {
+  if (name.length === 0) throw new TypeError('name must be non-empty');
   if (!Number.isInteger(seed)) throw new TypeError('seed must be an integer');
   return {
     metadata: { schemaVersion: 1, revision: 0, seed, name },
