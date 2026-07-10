@@ -14,16 +14,53 @@ let started = performance.now();
 let pausedAt = 0;
 let previous = performance.now();
 let reconnectAttempt = 0;
+let sessionToken: string | undefined;
+const failureReports = new Map<number, Promise<void>>();
 const pointer = { x: 0, y: 0, active: false };
 
 const applyScene = (next: Scene) => { scene = next; title.textContent = next.metadata.name; revision.textContent = `Revision ${next.metadata.revision}`; };
-const reportFailure = async (error: unknown) => { if (scene) await fetch('/api/render-failed', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ revision: scene.metadata.revision, message: error instanceof Error ? error.message : 'Render failed' }) }); };
+const fetchScene = async (): Promise<void> => {
+  try {
+    const response = await fetch('/api/scene');
+    if (!response.ok) throw new Error(`Scene request failed (${response.status})`);
+    applyScene(await response.json() as Scene);
+  } catch {
+    // SSE reconnect or a later recovery attempt will restore the scene.
+  }
+};
+const getSessionToken = async (): Promise<string> => {
+  if (sessionToken) return sessionToken;
+  const response = await fetch('/api/session');
+  if (!response.ok) throw new Error(`Session request failed (${response.status})`);
+  sessionToken = (await response.json() as { token: string }).token;
+  return sessionToken;
+};
+const reportFailure = (failedScene: Scene, error: unknown): Promise<void> => {
+  const failedRevision = failedScene.metadata.revision;
+  const existing = failureReports.get(failedRevision);
+  if (existing) return existing;
+  const report = (async () => {
+    try {
+      const token = await getSessionToken();
+      const response = await fetch('/api/render-failed', {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-preview-session': token },
+        body: JSON.stringify({ revision: failedRevision, message: error instanceof Error ? error.message : 'Render failed' }),
+      });
+      if (!response.ok) { await fetchScene(); return; }
+      const result = await response.json() as { scene?: Scene };
+      if (result.scene) applyScene(result.scene); else await fetchScene();
+    } catch { await fetchScene(); }
+    finally { failureReports.delete(failedRevision); }
+  })();
+  failureReports.set(failedRevision, report);
+  return report;
+};
 
 function frame(now: number) {
   if (scene) {
     const elapsed = playing ? (now - started) / 1000 : pausedAt;
     try { renderer.render(evaluateScene(scene, { time: elapsed, delta: Math.min((now - previous) / 1000, .1), pointer }), scene.composition, scene.metadata.revision); }
-    catch (error) { void reportFailure(error); scene = undefined; }
+    catch (error) { const failedScene = scene; scene = undefined; void reportFailure(failedScene, error); }
   }
   previous = now;
   requestAnimationFrame(frame);

@@ -6,6 +6,9 @@ type Composition = Scene['composition'];
 export class CanvasRenderer {
   private readonly context: CanvasRenderingContext2D;
   private readonly textMetrics = new Map<string, TextMetrics>();
+  private backingWidth = 0;
+  private backingHeight = 0;
+  private pixelRatio = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const context = canvas.getContext('2d');
@@ -16,8 +19,15 @@ export class CanvasRenderer {
   render(instances: readonly RenderInstance[], composition: Composition, revision = 0): void {
     const ratio = window.devicePixelRatio || 1;
     this.canvas.style.aspectRatio = `${composition.width} / ${composition.height}`;
-    this.canvas.width = Math.round(composition.width * ratio);
-    this.canvas.height = Math.round(composition.height * ratio);
+    const backingWidth = Math.round(composition.width * ratio);
+    const backingHeight = Math.round(composition.height * ratio);
+    if (backingWidth !== this.backingWidth || backingHeight !== this.backingHeight || ratio !== this.pixelRatio) {
+      this.canvas.width = backingWidth;
+      this.canvas.height = backingHeight;
+      this.backingWidth = backingWidth;
+      this.backingHeight = backingHeight;
+      this.pixelRatio = ratio;
+    }
     const context = this.context;
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.fillStyle = composition.background;
@@ -46,8 +56,14 @@ export class CanvasRenderer {
       context.font = `${item.fontSize ?? 32}px ${item.fontFamily ?? 'sans-serif'}`;
       context.fillStyle = item.fill ?? '#fff';
       const key = `${context.font}|${item.split ?? 'none'}|${content}`;
-      if (!this.textMetrics.has(key)) this.textMetrics.set(key, context.measureText(content));
-      context.fillText(content, 0, 0);
+      let metrics = this.textMetrics.get(key);
+      if (metrics) { this.textMetrics.delete(key); this.textMetrics.set(key, metrics); }
+      else {
+        metrics = context.measureText(content);
+        this.textMetrics.set(key, metrics);
+        if (this.textMetrics.size > 256) this.textMetrics.delete(this.textMetrics.keys().next().value!);
+      }
+      context.fillText(content, -metrics.width / 2, 0);
       return;
     }
     context.beginPath();
@@ -65,6 +81,7 @@ export class CanvasRenderer {
       }
       context.closePath();
     }
+    else throw new Error(`Unsupported render instance type: ${(instance as { type?: unknown }).type ?? 'unknown'}`);
     const painted = instance as RenderInstance & { fill?: string; stroke?: string; strokeWidth?: number };
     if (painted.fill) { context.fillStyle = painted.fill; context.fill(); }
     if (painted.stroke) { context.strokeStyle = painted.stroke; context.lineWidth = painted.strokeWidth ?? 1; context.stroke(); }

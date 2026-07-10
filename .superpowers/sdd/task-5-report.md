@@ -26,3 +26,11 @@
 ## Concern
 
 - The server uses Vite middleware, so `startPreviewServer` expects Vite to be installed at runtime (currently a project dev dependency).
+
+## Review fixes
+
+- Added a cryptographically random per-server session token plus strict same-origin, token, and JSON content-type checks for render-failure reports.
+- Enforced a byte-accurate 16 KiB request limit with single-response handling for oversized, aborted, and errored streams.
+- Deduplicated in-flight client failure reports and made every failed or conflicting rollback recover from `GET /api/scene`.
+- Made unsupported render types fail contextually, bounded text metrics to a 256-entry LRU used for split-text placement, and avoided backing-store resets unless dimensions or DPR change.
+- Expanded browser and unit coverage for authorization failures, body limits, rollback conflicts, recovery, contextual renderer failures, LRU behavior, and DPR changes.
