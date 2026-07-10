@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Scene } from '../src/model/schema';
@@ -127,3 +127,30 @@ test('deduplicates an in-flight render failure and recovers from a rollback conf
   await expect.poll(() => sceneReads).toBeGreaterThan(0);
   await expect(page.getByRole('heading')).toHaveText('Persistent preview');
 });
+
+const acceptanceNames = [
+  '01-character-wave', '02-radial-breath', '03-pointer-repel-grid', '04-outward-type-ring',
+  '05-organic-dot-field', '06-following-lines', '07-progressive-stars', '08-swiss-poster',
+] as const;
+
+for (const fixtureName of acceptanceNames) {
+  test(`${fixtureName} has deterministic timestamp snapshots`, async ({ page }) => {
+    const fixture = JSON.parse(await readFile(path.join(import.meta.dirname, '..', 'examples', `${fixtureName}.json`), 'utf8')) as Scene;
+    await writeFile(path.join(stateDir, 'state.json'), JSON.stringify({ current: fixture, history: [fixture] }));
+    await page.addInitScript(() => {
+      let frozenTime = 0;
+      const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+      Object.defineProperty(Performance.prototype, 'now', { configurable: true, value: () => frozenTime });
+      Object.defineProperty(window, 'requestAnimationFrame', { configurable: true, value: (callback: FrameRequestCallback) => nativeRequestAnimationFrame(() => callback(frozenTime)) });
+      Object.defineProperty(window, '__setMotionTime', { value: (milliseconds: number) => { frozenTime = milliseconds; } });
+    });
+    await page.goto(server.url);
+    await expect(page.getByRole('heading')).toHaveText(fixture.metadata.name);
+    const canvas = page.locator('canvas');
+    for (const [label, time] of [['t0', 0], ['t-quarter', fixture.composition.duration / 4], ['t-half', fixture.composition.duration / 2]] as const) {
+      await page.evaluate(milliseconds => (window as unknown as { __setMotionTime(value: number): void }).__setMotionTime(milliseconds), time * 1000);
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      await expect(canvas).toHaveScreenshot(`${fixtureName}-${label}.png`, { animations: 'disabled', maxDiffPixelRatio: 0.001 });
+    }
+  });
+}
