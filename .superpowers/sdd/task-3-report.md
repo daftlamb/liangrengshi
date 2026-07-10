@@ -21,3 +21,20 @@ Implemented deterministic Mulberry32/value noise, pure linear/grid/radial/path/s
 - Instance IDs are stable and all coordinate/rotation/time/influence units follow the brief.
 - Path generation supports line/circle and a four-control-point polygon as the existing schema-compatible cubic Bézier representation.
 - Root lockfiles and `node_modules` are intentionally excluded from the commit.
+
+## Review fixes
+
+- Path generators now require `pathElementId === element.id` and throw for geometry outside line, circle, and four-point cubic Bézier polygons.
+- Character splitting uses `Intl.Segmenter` graphemes with a deterministic Unicode-aware fallback; block, line, word, combining-mark, and ZWJ emoji cases are covered.
+- Degenerate cubic endpoint derivatives use the first non-zero higher derivative with the correct limiting direction.
+- Falloff clamps reject `min > max`; random repeatability, seed/index variation, bounds, context immutability, and binding order are covered.
+- Removed the redundant falloff intersection type and configured the standard `structuredClone` global for ESLint.
+
+## Review verification
+
+- `npm run test:unit -- tests/schema.test.ts tests/generators.test.ts tests/falloffs.test.ts tests/patch-store.test.ts`
+  - Result: 4 files passed, 43 tests passed.
+- `npm run typecheck`
+  - Result: passed (`tsc --noEmit`).
+- `npm run lint`
+  - Result: passed with zero errors.

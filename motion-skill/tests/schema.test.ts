@@ -36,6 +36,10 @@ describe('sceneSchema', () => {
     const falloffs = [{ id: 'field', type: 'linear', easing: 'easeInOut', invert: true, clamp: [0.2, 0.8] }];
     expect(sceneSchema.safeParse({ ...minimalScene, elements, falloffs }).success).toBe(true);
   });
+  it('rejects reversed falloff clamp bounds', () => {
+    const falloffs = [{ id: 'field', type: 'linear', clamp: [0.8, 0.2] }];
+    expect(sceneSchema.safeParse({ ...minimalScene, falloffs }).success).toBe(false);
+  });
 
   it('accepts every discriminated union variant', () => {
     const elements = [

@@ -11,15 +11,34 @@ type Composition = Pick<Scene['composition'], 'width' | 'height'>;
 
 function pieces(element: Element): Array<string | undefined> {
   if (element.type !== 'text') return [undefined];
-  if (element.split === 'characters') return Array.from(element.text);
+  if (element.split === 'characters') return splitGraphemes(element.text);
   if (element.split === 'words') return element.text.trim() ? element.text.trim().split(/\s+/u) : [];
   if (element.split === 'lines') return element.text.split(/\r?\n/u);
   return [element.text];
+}
+export function splitGraphemes(value: string, segmenter: Intl.Segmenter | null = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null): string[] {
+  if (segmenter) {
+    return Array.from(segmenter.segment(value), ({ segment }) => segment);
+  }
+  const result: string[] = [];
+  for (const character of value) {
+    if (/^\p{Mark}$/u.test(character) || /^[\uFE0E\uFE0F]$/u.test(character) || /^\p{Emoji_Modifier}$/u.test(character) || result.at(-1)?.endsWith('\u200d')) result[result.length - 1] += character;
+    else if (character === '\u200d' && result.length) result[result.length - 1] += character;
+    else if (/^\p{Regional_Indicator}$/u.test(character) && /^\p{Regional_Indicator}$/u.test(result.at(-1) ?? '')) result[result.length - 1] += character;
+    else result.push(character);
+  }
+  return result;
 }
 const interpolate = (a: number, b: number, t: number) => a + (b - a) * t;
 const progress = (index: number, count: number, start = 0, end = 1) => interpolate(start, end, count <= 1 ? 0 : index / (count - 1));
 
 export function generateInstances(generator: Generator, element: Element, composition: Composition): InstanceContext[] {
+  if (generator.type === 'path') {
+    if (generator.pathElementId !== element.id) throw new Error(`pathElementId ${generator.pathElementId} does not match element ${element.id}`);
+    if (element.type !== 'line' && element.type !== 'circle' && !(element.type === 'polygon' && element.points.length === 4)) {
+      throw new Error(`Unsupported path geometry: ${element.type}`);
+    }
+  }
   const split = pieces(element);
   const defaultCount = split.length;
   const count = generator.type === 'grid' && generator.count === undefined
@@ -59,7 +78,16 @@ export function generateInstances(generator: Generator, element: Element, compos
       } else if (element.type === 'polygon' && element.points.length === 4) {
         const [p0,p1,p2,p3]=element.points, u=1-t;
         position={x:u**3*p0.x+3*u*u*t*p1.x+3*u*t*t*p2.x+t**3*p3.x,y:u**3*p0.y+3*u*u*t*p1.y+3*u*t*t*p2.y+t**3*p3.y};
-        tangent=Math.atan2(3*u*u*(p1.y-p0.y)+6*u*t*(p2.y-p1.y)+3*t*t*(p3.y-p2.y),3*u*u*(p1.x-p0.x)+6*u*t*(p2.x-p1.x)+3*t*t*(p3.x-p2.x));
+        const derivatives = [
+          {x:3*u*u*(p1.x-p0.x)+6*u*t*(p2.x-p1.x)+3*t*t*(p3.x-p2.x),y:3*u*u*(p1.y-p0.y)+6*u*t*(p2.y-p1.y)+3*t*t*(p3.y-p2.y)},
+          {x:6*u*(p2.x-2*p1.x+p0.x)+6*t*(p3.x-2*p2.x+p1.x),y:6*u*(p2.y-2*p1.y+p0.y)+6*t*(p3.y-2*p2.y+p1.y)},
+          {x:6*(p3.x-3*p2.x+3*p1.x-p0.x),y:6*(p3.y-3*p2.y+3*p1.y-p0.y)},
+        ];
+        const derivativeIndex = derivatives.findIndex(({x,y}) => Math.hypot(x,y) > Number.EPSILON);
+        const rawDerivative = derivativeIndex < 0 ? {x:1,y:0} : derivatives[derivativeIndex];
+        const direction = t === 1 && derivativeIndex % 2 === 1 ? -1 : 1;
+        const derivative = {x:rawDerivative.x*direction,y:rawDerivative.y*direction};
+        tangent=Math.atan2(derivative.y,derivative.x);
       }
     }
     return { id: `${element.id}:${index}`, index, count, baseTransform: { ...base }, position, tangent, content: split[index % Math.max(1, split.length)] };

@@ -2,15 +2,14 @@ import type { Falloff } from '../model/schema';
 import { createRandom } from '../math/random';
 
 export interface FalloffContext { id: string; index: number; count: number; position: {x:number;y:number}; baseTransform: {x:number;y:number;rotation:number}; time: number }
-type ExtendedFalloff = Falloff & { easing?: 'linear'|'easeIn'|'easeOut'|'easeInOut'; invert?: boolean; clamp?: [number,number] };
 const saturate = (v:number) => Math.min(1,Math.max(0,v));
-function easing(v:number, name: ExtendedFalloff['easing']):number {
+function easing(v:number, name: Falloff['easing']):number {
   if(name==='easeIn') return v*v;
   if(name==='easeOut') return 1-(1-v)*(1-v);
   if(name==='easeInOut') return v<.5 ? 2*v*v : 1-Math.pow(-2*v+2,2)/2;
   return v;
 }
-function one(falloff: ExtendedFalloff, context: FalloffContext):number {
+function one(falloff: Falloff, context: FalloffContext):number {
   let value:number;
   if(falloff.type==='linear') value=1-saturate((context.position.x-(falloff.start??0))/((falloff.end??1)-(falloff.start??0)||1));
   else if(falloff.type==='radial') { const c=falloff.center??{x:0,y:0}; value=1-saturate(Math.hypot(context.position.x-c.x,context.position.y-c.y)/(falloff.radius??1)); }

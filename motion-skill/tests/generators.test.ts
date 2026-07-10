@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRandom, noise1D } from '../src/math/random';
-import { generateInstances } from '../src/evaluate/generators';
+import { generateInstances, splitGraphemes } from '../src/evaluate/generators';
 import type { Element, Generator } from '../src/model/schema';
 
 const composition = { width: 200, height: 100 };
@@ -26,6 +26,25 @@ describe('deterministic generators', () => {
     expect(generate({id:'p',type:'path',pathElementId:'circle',count:2}, circle)[0].tangent).toBeCloseTo(Math.PI/2);
     const bezier = { id:'curve', type:'polygon', points:[{x:0,y:0},{x:0,y:10},{x:10,y:10},{x:10,y:0}] } as Element;
     expect(generate({id:'p',type:'path',pathElementId:'curve',count:2}, bezier)[0].tangent).toBeCloseTo(Math.PI/2);
+  });
+  it('requires the referenced path element and rejects unsupported geometry', () => {
+    const line = { id:'line', type:'line', x:0, y:0, x2:100, y2:0 } as Element;
+    expect(() => generate({id:'p',type:'path',pathElementId:'other',count:2}, line)).toThrow(/pathElementId/i);
+    expect(() => generate({id:'p',type:'path',pathElementId:'title',count:2})).toThrow(/unsupported path geometry/i);
+  });
+  it('uses limiting cubic tangents when endpoint derivatives vanish', () => {
+    const start = { id:'start', type:'polygon', points:[{x:0,y:0},{x:0,y:0},{x:10,y:0},{x:10,y:10}] } as Element;
+    expect(generate({id:'p',type:'path',pathElementId:'start',count:2}, start)[0].tangent).toBeCloseTo(0);
+    const end = { id:'end', type:'polygon', points:[{x:0,y:0},{x:0,y:10},{x:10,y:10},{x:10,y:10}] } as Element;
+    expect(generate({id:'p',type:'path',pathElementId:'end',count:2}, end)[1].tangent).toBeCloseTo(0);
+  });
+  it('splits text by block, line, word, and grapheme character with exact counts', () => {
+    const text = (split: 'none'|'lines'|'words'|'characters') => ({id:'text',type:'text',text:'A\u0301 👨‍👩‍👧‍👦\nnext',split} as Element);
+    expect(generate({id:'g',type:'linear'}, text('none')).map(v => v.content)).toEqual(['A\u0301 👨‍👩‍👧‍👦\nnext']);
+    expect(generate({id:'g',type:'linear'}, text('lines')).map(v => v.content)).toEqual(['A\u0301 👨‍👩‍👧‍👦','next']);
+    expect(generate({id:'g',type:'linear'}, text('words')).map(v => v.content)).toEqual(['A\u0301','👨‍👩‍👧‍👦','next']);
+    expect(generate({id:'g',type:'linear'}, text('characters')).map(v => v.content)).toEqual(['A\u0301',' ','👨‍👩‍👧‍👦','\n','n','e','x','t']);
+    expect(splitGraphemes('A\u0301 👨‍👩‍👧‍👦', null)).toEqual(['A\u0301',' ','👨‍👩‍👧‍👦']);
   });
   it('keeps scatter bounded and reproducible', () => {
     const g = {id:'s',type:'scatter',seed:42,count:20,bounds:{x:10,y:20,width:30,height:40}} as Generator;

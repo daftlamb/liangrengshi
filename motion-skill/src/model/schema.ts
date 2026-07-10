@@ -35,7 +35,8 @@ export const behaviorSchema = z.discriminatedUnion('type', [
   z.object({ ...behaviorBase, type: z.literal('repel'), targetElementId: id, strength: finite.optional() }),
 ]);
 
-const falloffBase = { id, easing: z.enum(['linear', 'easeIn', 'easeOut', 'easeInOut']).optional(), invert: z.boolean().optional(), clamp: z.tuple([opacity, opacity]).optional() };
+const clamp = z.tuple([opacity, opacity]).refine(([minimum, maximum]) => minimum <= maximum, { message: 'Clamp minimum must not exceed maximum' });
+const falloffBase = { id, easing: z.enum(['linear', 'easeIn', 'easeOut', 'easeInOut']).optional(), invert: z.boolean().optional(), clamp: clamp.optional() };
 export const falloffSchema = z.discriminatedUnion('type', [
   z.object({ ...falloffBase, type: z.literal('linear'), start: finite.optional(), end: finite.optional() }),
   z.object({ ...falloffBase, type: z.literal('radial'), center: point.optional(), radius: finite.positive().optional() }),
