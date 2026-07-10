@@ -1,10 +1,11 @@
-import { applyPatch, type Operation } from 'fast-json-patch';
+import jsonPatch, { type Operation } from 'fast-json-patch';
 import type { Scene } from './schema';
 import { validateScene } from './validate';
 
 export type PreserveConstraint = 'layout' | 'content' | 'palette' | 'timing' | 'motion';
 
 const clone = <T>(value: T): T => structuredClone(value);
+const { applyPatch } = jsonPatch;
 const canonical = (value: unknown): string => JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
   ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item);
 
@@ -45,7 +46,7 @@ export class SceneStore {
 
   apply(operations: readonly Operation[], preserve: readonly PreserveConstraint[]): Scene {
     const before = this.current();
-    const candidate = applyPatch(clone(before), clone(operations), true, false).newDocument as Scene;
+    const candidate = applyPatch(clone(before), Array.from(clone(operations)), true, false).newDocument as Scene;
     return this.accept(candidate, preserve, before);
   }
 
