@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -19,6 +19,21 @@ async function sandbox() { return mkdtemp(path.join(tmpdir(), 'motion-cli-')); }
 afterEach(() => { for (const pid of servers.splice(0)) try { process.kill(pid); } catch { /* already stopped */ } });
 
 describe('motion-scene CLI', () => {
+  it('supports global and command help without touching state or requiring files to exist', async () => {
+    const cwd = await sandbox();
+    const global = run(cwd, ['--help']);
+    expect(global.status).toBe(0);
+    expect(global.json).toMatchObject({ ok: true, help: true });
+
+    const command = run(cwd, ['patch', '--file', 'missing.json', '--preserve', 'palette', '--help']);
+    expect(command.status).toBe(0);
+    expect(command.json).toMatchObject({ ok: true, help: true, command: 'patch' });
+    await expect(access(path.join(cwd, '.motion-scene'))).rejects.toThrow();
+
+    expect(run(cwd, ['patch', '--file', 'missing.txt', '--help']).status).not.toBe(0);
+    expect(run(cwd, ['patch', '--file', 'missing.json', '--wat', 'x', '--help']).status).not.toBe(0);
+    expect(run(cwd, ['patch', '--file', 'missing.json', '--file', 'other.json', '--help']).status).not.toBe(0);
+  });
   it('initializes the default state paths and reports status', async () => {
     const cwd = await sandbox();
     expect(run(cwd, ['init', '--name', 'Demo', '--seed', '7']).json).toMatchObject({ ok: true, revision: 0, warnings: [] });

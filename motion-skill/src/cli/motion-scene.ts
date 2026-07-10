@@ -13,7 +13,7 @@ import type { Scene } from '../model/schema';
 import { estimateSceneCost, validateScene } from '../model/validate';
 import { startPreviewServer } from '../runtime/server';
 
-type Args = { command: string; options: Map<string, string[]> };
+type Args = { command: string; options: Map<string, string[]>; help: boolean };
 type State = { current: Scene; history: Scene[] };
 type ServerInfo = { pid: number; port: number; identity: string; session: string };
 const schemas: Record<string, { required?: string[]; repeatable?: string[]; options: string[] }> = {
@@ -25,22 +25,34 @@ const schemas: Record<string, { required?: string[]; repeatable?: string[]; opti
 class CliError extends Error { constructor(message: string, readonly code = 'INVALID_ARGUMENT') { super(message); } }
 
 function parse(argv: string[]): Args {
+  if (argv.length === 1 && argv[0] === '--help') return { command: '', options: new Map(), help: true };
   const command = argv.shift() ?? '';
   const schema = schemas[command];
   if (!schema) throw new CliError(`Unknown command: ${command}`);
   const options = new Map<string, string[]>();
+  let help = false;
   while (argv.length) {
     const key = argv.shift()!;
     if (!key.startsWith('--') || key === '--') throw new CliError(`Unexpected argument: ${key}`);
     const name = key.slice(2);
+    if (name === 'help') {
+      if (help) throw new CliError(`Duplicate option: ${key}`);
+      help = true;
+      continue;
+    }
     if (!schema.options.includes(name)) throw new CliError(`Unknown option: ${key}`);
     const value = argv.shift();
     if (value === undefined || value.startsWith('--')) throw new CliError(`Missing value for ${key}`);
     if (options.has(name) && !schema.repeatable?.includes(name)) throw new CliError(`Duplicate option: ${key}`);
     options.set(name, [...(options.get(name) ?? []), value]);
   }
-  for (const name of schema.required ?? []) if (!options.has(name)) throw new CliError(`Missing required option: --${name}`);
-  return { command, options };
+  if (!help) for (const name of schema.required ?? []) if (!options.has(name)) throw new CliError(`Missing required option: --${name}`);
+  const file = options.get('file')?.[0];
+  if (file && path.extname(file).toLowerCase() !== '.json') throw new CliError('--file must use the .json extension');
+  for (const preserve of options.get('preserve') ?? []) if (!['layout', 'content', 'palette', 'timing', 'motion'].includes(preserve)) throw new CliError(`Invalid --preserve value: ${preserve}`);
+  if (options.has('seed')) integer(options.get('seed')![0], '--seed', 0, 0xffffffff);
+  if (options.has('port')) integer(options.get('port')![0], '--port', 0, 65535);
+  return { command, options, help };
 }
 
 const one = (args: Args, name: string, fallback?: string) => args.options.get(name)?.[0] ?? fallback;
@@ -154,7 +166,14 @@ async function serve(args: Args) {
 }
 
 async function main() {
-  const args = parse(process.argv.slice(2)); const dir = stateDirFor(args);
+  const args = parse(process.argv.slice(2));
+  if (args.help) {
+    const available = Object.keys(schemas).filter(command => !command.startsWith('__'));
+    if (!args.command) return { ok: true, help: true, commands: available };
+    const schema = schemas[args.command];
+    return { ok: true, help: true, command: args.command, options: schema.options.map(name => `--${name}`), required: schema.required?.map(name => `--${name}`) ?? [], repeatable: schema.repeatable?.map(name => `--${name}`) ?? [] };
+  }
+  const dir = stateDirFor(args);
   if (args.command === '__serve-child') {
     const port = integer(one(args, 'port')!, '--port', 0, 65535); const identity = one(args, 'identity')!; const session = one(args, 'session')!;
     const server = await startPreviewServer({ port, stateDir: dir, previewIdentity: { identity, session, pid: process.pid } });

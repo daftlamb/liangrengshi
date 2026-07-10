@@ -13,11 +13,11 @@ Read [scene-schema.md](references/scene-schema.md) before authoring JSON. Use [m
 
 ## Workflow
 
-Use the package-local CLI through `node_modules/.bin/vite-node src/cli/motion-scene.ts`; the examples below use the shorthand `motion-scene`. Keep one state directory for the conversation and one temporary working directory for candidate JSON and patches.
+Run every CLI example from the `motion-skill` package directory. The documented `npm exec -- vite-node src/cli/motion-scene.ts` runner is package-local and real. Keep one state directory for the conversation and one temporary working directory for candidate JSON and patches.
 
 1. **Inspect status first.** Run status before deciding anything. Read `.motion-scene/current.json` only after status succeeds; it is the current scene projection.
 
-motion-scene status --state-dir .motion-scene
+npm exec -- vite-node src/cli/motion-scene.ts status --state-dir .motion-scene
 
 2. Classify the request using exactly one branch:
 
@@ -31,21 +31,25 @@ motion-scene status --state-dir .motion-scene
 
 4. **validate before apply.** Validate a complete candidate scene before replace. For a patch, apply it to a temporary copy of the current scene and validate that complete candidate before running the real patch command. Never apply merely to discover whether it is valid.
 
-motion-scene validate --file /tmp/motion-candidate.json --state-dir .motion-scene
+npm exec -- vite-node src/cli/motion-scene.ts validate --file /tmp/motion-candidate.json --state-dir .motion-scene
 
-motion-scene replace --file /tmp/motion-candidate.json --state-dir .motion-scene
+npm exec -- vite-node src/cli/motion-scene.ts replace --file /tmp/motion-candidate.json --state-dir .motion-scene
 
-motion-scene patch --file /tmp/motion-patch.json --preserve palette --preserve content --state-dir .motion-scene
+npm exec -- vite-node src/cli/motion-scene.ts patch --file /tmp/motion-patch.json --preserve palette --preserve content --state-dir .motion-scene
 
-motion-scene undo --state-dir .motion-scene
+npm exec -- vite-node src/cli/motion-scene.ts undo --state-dir .motion-scene
 
 5. Check status again after a mutation. Treat a non-zero result or `ok: false` as failure; do not claim a change occurred. If a budget warning appears, lower generator counts while preserving the composition's intent, validate and apply that reduction, then report the budget reduction and its visual consequence.
 
-motion-scene status --state-dir .motion-scene
+npm exec -- vite-node src/cli/motion-scene.ts status --state-dir .motion-scene
 
 6. Launch or **reuse** the browser preview. `serve` returns JSON containing `url` and `reused`; open the returned URL. Do not start a second preview when the healthy one is reused.
 
-motion-scene serve --state-dir .motion-scene --port 0
+npm exec -- vite-node src/cli/motion-scene.ts serve --state-dir .motion-scene --port 0
+
+For callers outside the package directory, the checked-in wrapper resolves the package path itself and forwards every argument:
+
+motion-skill/skill/scripts/preview.sh --state-dir .motion-scene --port 0
 
 7. Review the preview for hierarchy, crop, legibility, loop quality, and excessive motion. Make only corrective patches that are clearly necessary; validate each candidate first.
 
@@ -67,6 +71,6 @@ Do not patch `/metadata/revision`; the store advances it. Preserve existing IDs 
 
 Only initialize when status proves no scene exists. Then author and validate a replacement:
 
-motion-scene init --name Draft --seed 1 --state-dir .motion-scene
+npm exec -- vite-node src/cli/motion-scene.ts init --name Draft --seed 1 --state-dir .motion-scene
 
 After initialization, follow the same Create workflow; the default scene is scaffolding, not the requested design.
