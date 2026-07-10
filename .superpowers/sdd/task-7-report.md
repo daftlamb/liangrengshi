@@ -2,43 +2,32 @@
 
 ## Delivered
 
-- Added eight canonical JSON fixtures using only schema-supported elements, generators, behaviors, falloffs, and animation bindings.
-- Added fixture contract coverage for schema/semantic validity, budgets, distinct seeds, binding limits, representative timestamps, finite numeric render values, deterministic replay, and loop endpoints.
-- Added 24 Playwright canvas baselines at `t=0`, `duration/4`, and `duration/2`.
-- Added a test-controlled manual rendering mode: `renderAt()` renders synchronously with fixed `delta = 1/60`, RAF callbacks early-return without touching the canvas, and `resume()` restores realtime RAF rendering.
-- Restricted Playwright discovery to `**/*.spec.ts`, preventing Vitest unit files from being collected.
+- Eight canonical JSON fixtures and 24 timestamp snapshot baselines.
+- Fixture contract coverage for schema validity, budgets, deterministic replay, and finite render values.
+- A synchronous manual render hook used by the Playwright acceptance tests.
+- Pointer-motion coverage for both evaluated positions and rendered image bytes.
 
-## TDD evidence
+## Third review evidence
 
-- Initial focused contract run: 9/9 failures with `ENOENT` for the eight absent fixtures.
-- After fixture implementation: 9/9 focused contract tests pass.
-- Initial visual run failed because baselines were absent; the first clock implementation also exposed unstable RAF timestamps. The RAF callback clock was then frozen and all 24 baselines were generated.
-- Fresh no-update Playwright run: 13/13 tests pass, including all 24 visual comparisons.
+The first ordinary focused run at commit `0539a54` did not reproduce the predicted failure:
 
-## Verification
+- `npx playwright test tests/preview.spec.ts --grep '03-pointer-repel-grid has deterministic timestamp snapshots'`: 1 passed.
+- The first `--update-snapshots` run also passed and wrote no files.
+
+Inspection showed that the test hashed one `canvas.screenshot()` result but asked `toHaveScreenshot()` to make a separate capture for the baseline. The test now matches the same captured buffer that it hashes. With exact pixel comparison, the next ordinary focused run failed on the pointer `t0` baseline with 2 different pixels. This is the observed red result; no earlier failure is claimed.
+
+The focused `--update-snapshots` run then reported that all three pointer baselines did not match and wrote actual images for `t0`, `t-quarter`, and `t-half`. `git diff --stat` reported all three PNGs changed from 33,846/33,977 bytes to 31,421 bytes.
+
+Two consecutive ordinary focused runs passed. After each run, all three pointer PNGs had these identical hashes:
+
+- SHA-256: `536415650bc9f8f065db9c46de4ef4bcbeaea8f823d73e13a12f96f9e3ebd4ac`
+- SHA-1: `c07deea1e81c38a9627f6032f086a54172226c1f`
+
+## Final verification
 
 - `npm run test:e2e`: 13 passed.
-- `npm run test:unit`: 84 passed across 9 files.
-- `npm run typecheck`: passed.
-- `npm run lint`: passed.
-- `npm run build`: passed.
-
-## Determinism and repository hygiene
-
-- Text fixtures use the pinned local `Inter Motion` WOFF2 family; snapshot names are platform-independent and were confirmed stable in the pinned Chromium environment by a fresh no-update run.
-- Canvas-only snapshots exclude host connection text and other preview chrome.
-- `motion-skill/dist`, `motion-skill/test-results`, dependency directories, and pre-existing lockfile modifications are excluded from the commit.
-
-## Review follow-up
-
-- Corrected the pointer-repel fixture to use the active pointer and added an E2E assertion that two real canvas pointer moves change both evaluated instance positions and rendered image hashes.
-- Added pinned `@fontsource/inter` WOFF2 packaging under the fixture-only `Inter Motion` family and wait for `document.fonts.ready` before capture.
-- Replaced RAF clock mutation with the synchronous `window.__motionTest.renderAt(time, pointer?)` hook, including exact rendered-time, scene-revision, and evaluated-instance observability.
-- Switched snapshot paths to platform-independent names, regenerated all 24 baselines, and added timestamp image-hash assertions for animated scenes.
-- Added a monotonically increasing render token for screenshot synchronization. The pointer-only fixture now proves identical hashes at `t=0`, quarter, and half duration for one fixed pointer, different hashes for two pointer positions, and resumed RAF rendering after `resume()`.
-
-## Second review verification
-
-- Red: the focused pointer snapshot test failed because `renderToken` was absent before the manual-mode implementation.
-- Baselines: all 24 snapshots were regenerated; a subsequent ordinary no-update Playwright run passed 13/13.
-- Fresh full gate: 84/84 unit tests and 13/13 E2E tests passed; typecheck, lint, build, and `git diff --check` all exited successfully.
+- `npm run test:unit`: 9 files passed, 84 tests passed.
+- `npm run typecheck`: exit 0.
+- `npm run lint`: exit 0.
+- `npm run build`: 92 modules transformed; build completed in 345 ms.
+- `git diff --check`: exit 0.

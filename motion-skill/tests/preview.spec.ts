@@ -197,8 +197,9 @@ for (const fixtureName of acceptanceNames) {
     const images: Buffer[] = [];
     for (const [label, time] of [['t0', 0], ['t-quarter', fixture.composition.duration / 4], ['t-half', fixture.composition.duration / 2]] as const) {
       await renderAt(page, time, { x: 480, y: 270, active: true });
-      images.push(await canvas.screenshot());
-      await expect(canvas).toHaveScreenshot(`${fixtureName}-${label}.png`, { animations: 'disabled', maxDiffPixelRatio: 0.001 });
+      const image = await canvas.screenshot({ animations: 'disabled' });
+      images.push(image);
+      expect(image).toMatchSnapshot(`${fixtureName}-${label}.png`, { threshold: 0, maxDiffPixels: 0 });
     }
     if (fixtureName !== '03-pointer-repel-grid' && fixtureName !== '06-following-lines') {
       expect(hash(images[1])).not.toBe(hash(images[0]));
