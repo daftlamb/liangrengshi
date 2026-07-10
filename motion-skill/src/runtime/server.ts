@@ -9,7 +9,7 @@ import { SceneStore } from '../model/patch-store';
 import type { Scene } from '../model/schema';
 
 export interface PreviewServer { url: string; close(): Promise<void> }
-export interface PreviewServerOptions { port: number; stateDir: string; host?: string }
+export interface PreviewServerOptions { port: number; stateDir: string; host?: string; previewIdentity?: { identity: string; session: string; pid: number } }
 
 const json = (response: ServerResponse, status: number, body: unknown) => {
   if (response.writableEnded) return;
@@ -42,7 +42,7 @@ const readJsonBody = (request: IncomingMessage, response: ServerResponse): Promi
   request.on('error', error => finish(() => reject(error)));
 });
 
-export async function startPreviewServer({ port, stateDir, host = '127.0.0.1' }: PreviewServerOptions): Promise<PreviewServer> {
+export async function startPreviewServer({ port, stateDir, host = '127.0.0.1', previewIdentity }: PreviewServerOptions): Promise<PreviewServer> {
   const scenePath = path.join(stateDir, 'current.json');
   const initial = JSON.parse(await readFile(scenePath, 'utf8')) as Scene;
   const store = new SceneStore(initial);
@@ -73,6 +73,7 @@ export async function startPreviewServer({ port, stateDir, host = '127.0.0.1' }:
   let serverOrigin = '';
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', `http://${host}`);
+    if (request.method === 'GET' && url.pathname === '/api/health' && previewIdentity) return json(response, 200, previewIdentity);
     if (request.method === 'GET' && url.pathname === '/api/scene') return json(response, 200, store.current());
     if (request.method === 'GET' && url.pathname === '/api/session') return json(response, 200, { token: sessionToken });
     if (request.method === 'GET' && url.pathname === '/api/events') {

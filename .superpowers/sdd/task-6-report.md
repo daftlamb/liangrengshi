@@ -24,6 +24,22 @@
 - Detached preview output is ignored so the invoking CLI exits cleanly; tests terminate the spawned PID.
 - No root lockfiles, dependency directories, build output, or test results are included in the commit.
 
+## Review fixes
+
+- Added authoritative atomic `state.json` commits. `current.json` and `history.json` remain compatible projections and are rebuilt from the committed state on every state load, including recovery after an injected second-projection failure.
+- Hardened atomic writes with exclusive randomized sibling files, file and directory fsync, and unconditional temporary-file cleanup.
+- Replaced trusted metadata URLs with a strict PID/port/identity/session schema and a derived loopback health URL. Reuse requires a live PID and an exact identity response from `/api/health`.
+- Added bounded cleanup for positively identified preview children, safe metadata-only cleanup when ownership cannot be established, launch-timeout cleanup, and exact requested-port reuse semantics.
+- Added explicit per-command option schemas, validation for integer/range values, duplicate/unknown/missing option rejection, and exactly one structured failure object on stdout.
+- Added regression coverage for transactional recovery, malicious URL metadata, stale unowned PIDs, explicit port mismatch, malformed options, and temporary-file cleanup.
+
+## Final verification
+
+- `npm run test:unit`: 73/73 tests passed across 8 files.
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npm run build`: passed.
+
 ## Concern
 
-- Cross-file current/history updates are individually atomic, not a transactional two-file commit. A process crash between the two renames could leave history one entry behind current; ordinary command failures do not produce partial state.
+- `current.json` and `history.json` are compatibility projections, so an observer reading them during the narrow projection interval can see different generations. Commands always load `state.json` as the commit authority and repair both projections before use, so crashes and command restarts cannot accept a mixed pair as state.

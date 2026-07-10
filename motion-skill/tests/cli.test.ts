@@ -1,16 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '..');
 const cli = path.join(root, 'src/cli/motion-scene.ts');
 const servers: number[] = [];
 
-function run(cwd: string, args: string[]) {
-  const result = spawnSync(path.join(root, 'node_modules/.bin/vite-node'), [cli, ...args], { cwd, encoding: 'utf8' });
-  return { ...result, json: JSON.parse((result.stdout || result.stderr).trim()) as Record<string, unknown> };
+function run(cwd: string, args: string[], env?: Record<string, string>) {
+  const result = spawnSync(path.join(root, 'node_modules/.bin/vite-node'), [cli, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...env } });
+  return { ...result, json: JSON.parse(result.stdout.trim()) as Record<string, unknown> };
 }
 
 async function sandbox() { return mkdtemp(path.join(tmpdir(), 'motion-cli-')); }
@@ -67,5 +68,56 @@ describe('motion-scene CLI', () => {
     servers.push(one.pid);
     const second = run(cwd, ['serve', '--state-dir', state, '--port', '0']).json;
     expect(second).toMatchObject({ ok: true, reused: true, url: one.url, pid: one.pid });
+  });
+
+  it('rejects unknown, duplicate, missing, and invalid options with one stdout JSON value', async () => {
+    const cwd = await sandbox();
+    for (const args of [['init', '--wat', 'x'], ['init', '--name', 'a', '--name', 'b'], ['replace'], ['init', '--seed', 'nope']]) {
+      const result = run(cwd, args);
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toBe('');
+      expect(result.stdout.trim().split('\n')).toHaveLength(1);
+      expect(result.json).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' });
+    }
+  });
+
+  it('recovers compatible projections from authoritative state after projection failure', async () => {
+    const cwd = await sandbox();
+    run(cwd, ['init']);
+    const replacement = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
+    replacement.composition.background = '#123456';
+    await writeFile(path.join(cwd, 'replacement.json'), JSON.stringify(replacement));
+    const failed = run(cwd, ['replace', '--file', 'replacement.json'], { MOTION_TEST_FAIL_PROJECTION: 'history.json' });
+    expect(failed.status).not.toBe(0);
+    expect(run(cwd, ['status']).json).toMatchObject({ ok: true, revision: 1 });
+    const state = JSON.parse(await readFile(path.join(cwd, '.motion-scene/state.json'), 'utf8'));
+    expect(JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'))).toEqual(state.current);
+    expect(JSON.parse(await readFile(path.join(cwd, '.motion-scene/history.json'), 'utf8'))).toEqual(state.history);
+  });
+
+  it('does not fetch an attacker-controlled metadata URL and replaces mismatched requested ports', async () => {
+    const cwd = await sandbox();
+    const state = path.join(cwd, 'state');
+    run(cwd, ['init', '--state-dir', state]);
+    await writeFile(path.join(state, 'server.json'), JSON.stringify({ pid: process.pid, port: 80, url: 'http://example.com/', identity: 'bad', session: 'bad' }));
+    const first = run(cwd, ['serve', '--state-dir', state, '--port', '0']);
+    expect(first.json).toMatchObject({ ok: true, reused: false });
+    servers.push(first.json.pid as number);
+    const requested = (first.json.port as number) === 43199 ? 43200 : 43199;
+    const second = run(cwd, ['serve', '--state-dir', state, '--port', String(requested)]);
+    expect(second.json).toMatchObject({ ok: true, reused: false, port: requested });
+    servers.push(second.json.pid as number);
+  });
+
+  it('clears stale unowned PID metadata without signalling that PID and leaves no temporary files', async () => {
+    const cwd = await sandbox();
+    const state = path.join(cwd, 'state');
+    run(cwd, ['init', '--state-dir', state]);
+    await writeFile(path.join(state, 'server.json'), JSON.stringify({ pid: process.pid, port: 9, identity: 'wrong', session: 'wrong' }));
+    const result = run(cwd, ['serve', '--state-dir', state]);
+    expect(result.status).toBe(0);
+    servers.push(result.json.pid as number);
+    expect(await readdir(state)).not.toEqual(expect.arrayContaining([expect.stringMatching(/\.tmp-/)]));
+    await rm(path.join(state, 'server.json'));
   });
 });
