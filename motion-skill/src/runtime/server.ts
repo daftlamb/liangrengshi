@@ -43,7 +43,7 @@ const readJsonBody = (request: IncomingMessage, response: ServerResponse): Promi
 });
 
 export async function startPreviewServer({ port, stateDir, host = '127.0.0.1' }: PreviewServerOptions): Promise<PreviewServer> {
-  const scenePath = path.join(stateDir, 'scene.json');
+  const scenePath = path.join(stateDir, 'current.json');
   const initial = JSON.parse(await readFile(scenePath, 'utf8')) as Scene;
   const store = new SceneStore(initial);
   const sessionToken = randomBytes(32).toString('base64url');
