@@ -13,7 +13,7 @@ import type { Scene } from '../model/schema';
 import { estimateSceneCost, validateScene } from '../model/validate';
 import { startPreviewServer } from '../runtime/server';
 import { analyzeOpinion, composeOpinionCard } from '../opinion/compose';
-import { composeDiagramCard } from '../opinion/diagram';
+import { composeDiagramCard, diagramDirectionValues, type DiagramDirection, type DiagramDirectionInput } from '../opinion/diagram';
 
 type Args = { command: string; options: Map<string, string[]>; help: boolean };
 type State = { current: Scene; history: Scene[] };
@@ -23,7 +23,7 @@ const schemas: Record<string, { required?: string[]; repeatable?: string[]; opti
   replace: { options: ['file', 'state-dir'], required: ['file'] }, patch: { options: ['file', 'preserve', 'state-dir'], required: ['file'], repeatable: ['preserve'] },
   undo: { options: ['state-dir'] }, status: { options: ['state-dir'] }, serve: { options: ['state-dir', 'port'] },
   opinion: { options: ['text', 'seed', 'state-dir'], required: ['text'] },
-  diagram: { options: ['text', 'seed', 'state-dir'], required: ['text'] },
+  diagram: { options: ['text', 'seed', 'state-dir', 'composition', 'palette', 'motion', 'typography'], required: ['text'] },
   '__serve-child': { options: ['state-dir', 'port', 'identity', 'session'], required: ['state-dir', 'port', 'identity', 'session'] },
 };
 class CliError extends Error { constructor(message: string, readonly code = 'INVALID_ARGUMENT') { super(message); } }
@@ -60,6 +60,19 @@ function parse(argv: string[]): Args {
 }
 
 const one = (args: Args, name: string, fallback?: string) => args.options.get(name)?.[0] ?? fallback;
+function choice<T extends readonly string[]>(value: string | undefined, name: string, values: T): T[number] | undefined {
+  if (value === undefined) return undefined;
+  if (!(values as readonly string[]).includes(value)) throw new CliError(`Invalid ${name} value: ${value}`);
+  return value as T[number];
+}
+function diagramDirectionFor(args: Args): DiagramDirectionInput {
+  return {
+    composition: choice(one(args, 'composition'), '--composition', diagramDirectionValues.composition) as DiagramDirection['composition'] | undefined,
+    palette: choice(one(args, 'palette'), '--palette', diagramDirectionValues.palette) as DiagramDirection['palette'] | undefined,
+    motion: choice(one(args, 'motion'), '--motion', diagramDirectionValues.motion) as DiagramDirection['motion'] | undefined,
+    typography: choice(one(args, 'typography'), '--typography', diagramDirectionValues.typography) as DiagramDirection['typography'] | undefined,
+  };
+}
 function integer(value: string, name: string, min: number, max: number) {
   if (!/^(?:0|[1-9]\d*)$/.test(value)) throw new CliError(`${name} must be an integer`);
   const number = Number(value);
@@ -197,10 +210,11 @@ async function main() {
   if (args.command === 'diagram') {
     const seed = integer(one(args, 'seed', '1')!, '--seed', 0, 0xffffffff);
     const text = one(args, 'text')!;
+    const direction = diagramDirectionFor(args);
     const analysis = analyzeOpinion(text);
-    const scene = composeDiagramCard({ text, seed });
+    const scene = composeDiagramCard({ text, seed, direction });
     const projectionWarnings = await persist(dir, scene, [scene]);
-    return { ok: true, revision: 0, relation: analysis.relation, emphasis: analysis.emphasis, warnings: [...warningsFor(scene), ...projectionWarnings] };
+    return { ok: true, revision: 0, relation: analysis.relation, emphasis: analysis.emphasis, direction: { composition: direction.composition ?? 'auto', palette: direction.palette ?? 'default', motion: direction.motion ?? 'natural', typography: direction.typography ?? 'sans' }, warnings: [...warningsFor(scene), ...projectionWarnings] };
   }
   if (args.command === 'init') {
     const seed = integer(one(args, 'seed', '1')!, '--seed', 0, 0xffffffff); const scene = createDefaultScene(one(args, 'name', 'Untitled')!, seed);

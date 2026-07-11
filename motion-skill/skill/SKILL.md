@@ -19,6 +19,15 @@ When the viewpoint needs an infographic-like explanation—contrast, causal flow
 
 `npm exec -- vite-node src/cli/motion-scene.ts diagram --text "真正的壁垒不是模型能力而是进入日常工作流" --seed 1 --state-dir .motion-scene`
 
+Use the automatic direction by default. If the request names a visual preference, pass only the relevant art-direction flags; do not make the user complete a form first:
+
+`npm exec -- vite-node src/cli/motion-scene.ts diagram --text "天气和肤质导致化妆品销量降低" --composition causal --palette electric-blue --motion calm --typography sans --seed 1 --state-dir .motion-scene`
+
+- `--composition`: `auto`, `causal`, `contrast`, `converge`, `system`
+- `--palette`: `default`, `mono`, `signal-red`, `electric-blue`, `warm-paper`
+- `--motion`: `calm`, `natural`, `pronounced`, `quick`, `still-first`
+- `--typography`: `sans`, `editorial-serif`, `mixed`, `brand`
+
 ## Workflow
 
 Run every CLI example from the `motion-skill` package directory. The documented `npm exec -- vite-node src/cli/motion-scene.ts` runner is package-local and real. Keep one state directory for the conversation and one temporary working directory for candidate JSON and patches.

@@ -18,4 +18,10 @@ describe('diagram cards', () => {
     expect(labels).toContain('洞察');
     expect(labels).toContain('愉悦');
   });
+
+  test('uses anchored title lines and automatically aligned arrowheads', () => {
+    const scene = composeDiagramCard({ text: '天气和肤质导致化妆品销量降低', seed: 8 });
+    expect(scene.elements.filter(element => element.id.startsWith('title-')).length).toBeGreaterThanOrEqual(1);
+    expect(scene.elements.filter(element => element.id.endsWith('-arrow'))).toHaveLength(2);
+  });
 });

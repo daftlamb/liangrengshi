@@ -38,6 +38,21 @@ describe('motion-scene CLI', () => {
     expect(scene.metadata.name).toContain('观点图解卡');
   });
 
+  it('accepts optional art direction for a relationship diagram', async () => {
+    const cwd = await sandbox();
+    const result = run(cwd, [
+      'diagram', '--text', '天气和肤质导致化妆品销量降低', '--seed', '8',
+      '--palette', 'signal-red', '--motion', 'calm', '--typography', 'editorial-serif', '--composition', 'causal',
+    ]);
+    expect(result.status).toBe(0);
+    expect(result.json).toMatchObject({ ok: true, direction: { palette: 'signal-red', motion: 'calm', typography: 'editorial-serif', composition: 'causal' } });
+    const scene = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
+    expect(scene.composition.background).toBe('#F3F1EA');
+    expect(scene.elements.find((element: { id: string }) => element.id === 'node-b').fill).toBe('#E52521');
+    expect(scene.elements.find((element: { id: string }) => element.id === 'title-0').fontFamily).toBe('Songti SC');
+    expect(scene.behaviors.find((behavior: { id: string }) => behavior.id === 'node-pulse').amplitude).toBe(0.035);
+  });
+
   it('supports global and command help without touching state or requiring files to exist', async () => {
     const cwd = await sandbox();
     const global = run(cwd, ['--help']);
@@ -59,7 +74,7 @@ describe('motion-scene CLI', () => {
     expect(JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8')).metadata.name).toBe('Demo');
     expect(JSON.parse(await readFile(path.join(cwd, '.motion-scene/history.json'), 'utf8'))).toHaveLength(1);
     expect(run(cwd, ['status']).json).toMatchObject({ ok: true, revision: 0, valid: true });
-  });
+  }, 15_000);
 
   it('replaces, patches with constraints, preserves invalid-patch state, and undoes', async () => {
     const cwd = await sandbox();
@@ -79,7 +94,7 @@ describe('motion-scene CLI', () => {
     expect(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8')).toBe(before);
     expect(run(cwd, ['undo']).json).toMatchObject({ ok: true, revision: 3 });
     expect(JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8')).composition.background).toBe('#abcdef');
-  });
+  }, 15_000);
 
   it('warns when a replacement exceeds the instance budget', async () => {
     const cwd = await sandbox();

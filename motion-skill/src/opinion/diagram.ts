@@ -1,35 +1,112 @@
 import type { Scene } from '../model/schema';
+import { centeredPair, leftTextBlock } from '../layout/anchors';
+import { relationEdge } from '../layout/relations';
 import { analyzeOpinion } from './compose';
 
-export function composeDiagramCard(input: { text: string; seed: number }): Scene {
+const titleLines = (text: string) => text.length > 14 ? `${text.slice(0, 10)}\n${text.slice(10)}` : text;
+const arrowPoints = [{ x: 0, y: 0 }, { x: -20, y: -12 }, { x: -20, y: 12 }];
+
+export const diagramDirectionValues = {
+  composition: ['auto', 'causal', 'contrast', 'converge', 'system'] as const,
+  palette: ['default', 'mono', 'signal-red', 'electric-blue', 'warm-paper'] as const,
+  motion: ['calm', 'natural', 'pronounced', 'quick', 'still-first'] as const,
+  typography: ['sans', 'editorial-serif', 'mixed', 'brand'] as const,
+};
+
+export type DiagramDirection = { [K in keyof typeof diagramDirectionValues]: (typeof diagramDirectionValues)[K][number] };
+export type DiagramDirectionInput = Partial<DiagramDirection>;
+
+const paletteFor = (palette: DiagramDirection['palette']) => {
+  if (palette === 'mono') return { background: '#FFFFFF', ink: '#111111', accent: '#111111' };
+  if (palette === 'signal-red') return { background: '#F3F1EA', ink: '#111111', accent: '#E52521' };
+  if (palette === 'warm-paper') return { background: '#E9E0D2', ink: '#221D18', accent: '#B24A25' };
+  return { background: '#F3F1EA', ink: '#111111', accent: '#1747FF' };
+};
+const motionFor = (motion: DiagramDirection['motion']) => {
+  if (motion === 'calm') return { amplitude: 0.035, frequency: 0.12 };
+  if (motion === 'pronounced') return { amplitude: 0.13, frequency: 0.32 };
+  if (motion === 'quick') return { amplitude: 0.08, frequency: 0.48 };
+  if (motion === 'still-first') return { amplitude: 0.02, frequency: 0.1 };
+  return { amplitude: 0.07, frequency: 0.16 };
+};
+const typefaceFor = (typography: DiagramDirection['typography']) => typography === 'editorial-serif' ? 'Songti SC' : 'PingFang SC';
+
+export function resolveDiagramDirection(input: DiagramDirectionInput = {}): DiagramDirection {
+  return { composition: input.composition ?? 'auto', palette: input.palette ?? 'default', motion: input.motion ?? 'natural', typography: input.typography ?? 'sans' };
+}
+
+export function composeDiagramCard(input: { text: string; seed: number; direction?: DiagramDirectionInput }): Scene {
   const analysis = analyzeOpinion(input.text);
-  const fragments = analysis.text
-    .split(/(?:不是|而是|不一定|让人|导致|因此|的|，|。)/u)
-    .map(fragment => fragment.replace(/^(?:真正有|真正的|一个)/u, '').trim())
-    .filter(fragment => /\p{Script=Han}/u.test(fragment));
-  const [left = fragments[0] ?? '观点', right = fragments.at(-1) ?? '结论'] = analysis.emphasis.length ? analysis.emphasis : [fragments[0], fragments.at(-1)];
-  const relationLabel = analysis.relation === 'contrast' ? 'NOT → BUT' : analysis.relation.toUpperCase();
+  const direction = resolveDiagramDirection(input.direction);
+  const relation = direction.composition === 'auto' ? analysis.relation : direction.composition === 'causal' ? 'propagate' : direction.composition;
+  const colors = paletteFor(direction.palette);
+  const fontFamily = typefaceFor(direction.typography);
+  const motion = motionFor(direction.motion);
+  const cause = relation === 'propagate' ? input.text.split('导致')[0]?.split(/[和、及]/u).filter(Boolean).slice(0, 2) ?? [] : [];
+  const effect = relation === 'propagate' ? input.text.split('导致')[1] : undefined;
+  const title = leftTextBlock(titleLines(analysis.text), { left: 88, top: 155, fontSize: 48, lineHeight: 58 });
+  const elements: Scene['elements'] = [
+    ...title.map((line, index) => ({ id: `title-${index}`, type: 'text' as const, text: line.text, x: line.x, y: line.y, fill: colors.ink, fontFamily, fontSize: 48 })),
+    { id: 'eyebrow', type: 'text', text: `RELATION / ${relation.toUpperCase()}`, x: 225, y: 105, fill: colors.ink, fontFamily: 'Inter Motion', fontSize: 24 },
+    { id: 'caption', type: 'text', text: '外部条件 → 消费结果', x: 255, y: 1080, fill: colors.accent, fontFamily, fontSize: 28 },
+  ];
+  const animation: Scene['animation'] = [];
+
+  if (cause.length === 2 && effect) {
+    const sourceA = { x: 280, y: 490, radius: 120 };
+    const sourceB = { x: 620, y: 490, radius: 120 };
+    const result = { x: 450, y: 875, radius: 132 };
+    const leftEdge = relationEdge({ from: sourceA, to: result, clearance: 14 });
+    const rightEdge = relationEdge({ from: sourceB, to: result, clearance: 14 });
+    elements.push(
+      { id: 'node-a', type: 'circle', ...sourceA, fill: colors.ink },
+      { id: 'node-b', type: 'circle', ...sourceB, fill: colors.accent },
+      { id: 'result-node', type: 'circle', ...result, fill: colors.ink },
+      { id: 'node-a-label', type: 'text', text: cause[0]!, x: sourceA.x, y: sourceA.y + 12, fill: colors.background, fontFamily, fontSize: 38 },
+      { id: 'node-b-label', type: 'text', text: cause[1]!, x: sourceB.x, y: sourceB.y + 12, fill: colors.background, fontFamily, fontSize: 38 },
+      { id: 'result-label', type: 'text', text: effect, x: result.x, y: result.y + 4, fill: colors.background, fontFamily, fontSize: 34 },
+      { id: 'cause-a-edge', type: 'line', x: leftEdge.start.x, y: leftEdge.start.y, x2: leftEdge.end.x, y2: leftEdge.end.y, stroke: colors.accent, strokeWidth: 5 },
+      { id: 'cause-b-edge', type: 'line', x: rightEdge.start.x, y: rightEdge.start.y, x2: rightEdge.end.x, y2: rightEdge.end.y, stroke: colors.accent, strokeWidth: 5 },
+      { id: 'cause-a-arrow', type: 'polygon', x: leftEdge.arrow.x, y: leftEdge.arrow.y, rotation: leftEdge.arrow.rotation, points: arrowPoints, fill: colors.accent },
+      { id: 'cause-b-arrow', type: 'polygon', x: rightEdge.arrow.x, y: rightEdge.arrow.y, rotation: rightEdge.arrow.rotation, points: arrowPoints, fill: colors.accent },
+    );
+    animation.push(
+      { id: 'source-a-response', elementId: 'node-a', behaviorId: 'node-pulse', falloffIds: [], channels: ['scale'], role: 'supporting' },
+      { id: 'source-b-response', elementId: 'node-b', behaviorId: 'node-pulse', falloffIds: [], channels: ['scale'], role: 'supporting' },
+      { id: 'result-response', elementId: 'result-node', behaviorId: 'result-pulse', falloffIds: [], channels: ['scale'], role: 'primary' },
+    );
+  } else {
+    const focusParts = analysis.text
+      .split(/(?:不是|而是|不一定|让人|导致|因此|的|，|。)/u)
+      .map(part => part.replace(/^(?:真正有|真正的|一个)/u, '').trim())
+      .filter(part => /\p{Script=Han}/u.test(part));
+    const [left = '观点', right = '结论'] = analysis.emphasis.length ? analysis.emphasis : [focusParts[0], focusParts.at(-1)];
+    const pair = centeredPair({ canvasWidth: 900, leftRadius: 88, rightRadius: 104, gap: 140, y: 620 });
+    const edge = relationEdge({ from: { ...pair.left, radius: 88 }, to: { ...pair.right, radius: 104 }, clearance: 14 });
+    elements.push(
+      { id: 'node-a', type: 'circle', ...pair.left, radius: 88, fill: colors.ink },
+      { id: 'node-b', type: 'circle', ...pair.right, radius: 104, fill: colors.accent },
+      { id: 'node-a-label', type: 'text', text: left, x: pair.left.x, y: pair.left.y + 12, fill: colors.background, fontFamily, fontSize: 30 },
+      { id: 'node-b-label', type: 'text', text: right, x: pair.right.x, y: pair.right.y + 12, fill: colors.background, fontFamily, fontSize: 32 },
+      { id: 'relation-edge', type: 'line', x: edge.start.x, y: edge.start.y, x2: edge.end.x, y2: edge.end.y, stroke: colors.accent, strokeWidth: 4 },
+      { id: 'relation-arrow', type: 'polygon', x: edge.arrow.x, y: edge.arrow.y, rotation: edge.arrow.rotation, points: arrowPoints, fill: colors.accent },
+    );
+    animation.push(
+      { id: 'source-response', elementId: 'node-a', behaviorId: 'node-pulse', falloffIds: [], channels: ['scale'], role: 'supporting' },
+      { id: 'conclusion-response', elementId: 'node-b', behaviorId: 'result-pulse', falloffIds: [], channels: ['scale'], role: 'primary' },
+    );
+  }
+
   return {
-    metadata: { schemaVersion: 1, revision: 0, seed: input.seed, name: `观点图解卡 · ${analysis.relation}` },
-    composition: { width: 900, height: 1200, background: '#F3F1EA', duration: 5, loop: true, style: 'editorial' },
-    elements: [
-      { id: 'edge', type: 'line', x: 245, y: 590, x2: 655, y2: 590, stroke: '#1747FF', strokeWidth: 4 },
-      { id: 'node-a', type: 'circle', x: 245, y: 590, radius: 88, fill: '#111111' },
-      { id: 'node-b', type: 'circle', x: 655, y: 590, radius: 104, fill: '#1747FF' },
-      { id: 'eyebrow', type: 'text', text: `RELATION / ${relationLabel}`, x: 225, y: 140, fill: '#111111', fontFamily: 'Inter Motion', fontSize: 24 },
-      { id: 'statement', type: 'text', text: analysis.text, x: 450, y: 270, fill: '#111111', fontFamily: 'PingFang SC', fontSize: 48 },
-      { id: 'node-a-label', type: 'text', text: left, x: 245, y: 604, fill: '#F3F1EA', fontFamily: 'PingFang SC', fontSize: 30 },
-      { id: 'node-b-label', type: 'text', text: right, x: 655, y: 604, fill: '#F3F1EA', fontFamily: 'PingFang SC', fontSize: 32 },
-      { id: 'caption', type: 'text', text: '关系在动态中成立', x: 255, y: 1030, fill: '#1747FF', fontFamily: 'PingFang SC', fontSize: 28 },
-    ],
+    metadata: { schemaVersion: 1, revision: 0, seed: input.seed, name: `观点图解卡 · ${relation}` },
+    composition: { width: 900, height: 1200, background: colors.background, duration: 5, loop: true, style: 'editorial' },
+    elements,
     generators: [],
     behaviors: [
-      { id: 'node-pulse', type: 'wave', waveform: 'sine', amplitude: 14, frequency: 0.18, phase: 0 },
+      { id: 'node-pulse', type: 'wave', waveform: 'sine', amplitude: motion.amplitude, frequency: motion.frequency, phase: 0 },
+      { id: 'result-pulse', type: 'wave', waveform: 'sine', amplitude: motion.amplitude + 0.02, frequency: motion.frequency, phase: 0.65 },
     ],
     falloffs: [],
-    animation: [
-      { id: 'source-response', elementId: 'node-a', behaviorId: 'node-pulse', falloffIds: [], channels: ['scale'], role: 'primary' },
-      { id: 'conclusion-response', elementId: 'node-b', behaviorId: 'node-pulse', falloffIds: [], channels: ['scale'], role: 'supporting' },
-    ],
+    animation,
   };
 }
