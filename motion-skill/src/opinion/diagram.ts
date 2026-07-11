@@ -45,13 +45,13 @@ export function composeDiagramCard(input: { text: string; seed: number; directio
   const motion = motionFor(direction.motion);
   const cause = relation === 'propagate' ? input.text.split('导致')[0]?.split(/[和、及]/u).filter(Boolean).slice(0, 2) ?? [] : [];
   const effect = relation === 'propagate' ? input.text.split('导致')[1] : undefined;
-  const title = leftTextBlock(titleLines(analysis.text), { left: 88, top: 155, fontSize: 48, lineHeight: 58 });
+  const title = leftTextBlock(titleLines(analysis.text), { left: 88, top: 180, fontSize: 48, lineHeight: 58 });
   const eyebrow = leftTextLine(`RELATION / ${relation.toUpperCase()}`, { left: 88, y: 105, fontSize: 24 });
   const caption = leftTextLine('外部条件 → 消费结果', { left: 88, y: 1080, fontSize: 28 });
   const elements: Scene['elements'] = [
-    ...title.map((line, index) => ({ id: `title-${index}`, type: 'text' as const, text: line.text, x: line.x, y: line.y, fill: colors.ink, fontFamily, fontSize: 48 })),
-    { id: 'eyebrow', type: 'text', text: eyebrow.text, x: eyebrow.x, y: eyebrow.y, fill: colors.ink, fontFamily: 'Inter Motion', fontSize: 24 },
-    { id: 'caption', type: 'text', text: caption.text, x: caption.x, y: caption.y, fill: colors.accent, fontFamily, fontSize: 28 },
+    ...title.map((line, index) => ({ id: `title-${index}`, type: 'text' as const, text: line.text, x: 88, y: line.y, textAlign: 'left' as const, fill: colors.ink, fontFamily, fontSize: 48 })),
+    { id: 'eyebrow', type: 'text', text: eyebrow.text, x: 88, y: eyebrow.y, textAlign: 'left' as const, fill: colors.ink, fontFamily: 'Inter Motion', fontSize: 24 },
+    { id: 'caption', type: 'text', text: caption.text, x: 88, y: caption.y, textAlign: 'left' as const, fill: colors.accent, fontFamily, fontSize: 28 },
   ];
   const animation: Scene['animation'] = [];
 
@@ -61,7 +61,7 @@ export function composeDiagramCard(input: { text: string; seed: number; directio
     const result = { x: 450, y: 875, radius: 132 };
     const sourceALabel = fitTextInCircle(cause[0]!, { radius: sourceA.radius, fontSize: 38, inset: 28, lineHeight: 42 });
     const sourceBLabel = fitTextInCircle(cause[1]!, { radius: sourceB.radius, fontSize: 38, inset: 28, lineHeight: 42 });
-    const resultLabel = fitTextInCircle(effect, { radius: result.radius, fontSize: 34, inset: 32, lineHeight: 38 });
+    const resultLabel = fitTextInCircle(effect, { radius: result.radius, fontSize: 34, inset: 44, lineHeight: 38, preferredBreakBefore: ['销量', '增长', '降低', '提升', '下降'] });
     const leftEdge = relationEdge({ from: sourceA, to: result, clearance: 14 });
     const rightEdge = relationEdge({ from: sourceB, to: result, clearance: 14 });
     elements.push(

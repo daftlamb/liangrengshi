@@ -7,7 +7,7 @@ const color = z.string().regex(/^#(?:[\da-f]{3}|[\da-f]{6})$/i, 'Color must be #
 const point = z.object({ x: finite, y: finite });
 const baseElement = { id, opacity: opacity.optional(), x: finite.optional(), y: finite.optional(), rotation: finite.optional(), scale: finite.nonnegative().optional() };
 
-const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'lines', 'words', 'characters']).optional(), fill: color.optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional(), letterSpacing: finite.optional(), lineHeight: finite.positive().optional() });
+const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'lines', 'words', 'characters']).optional(), textAlign: z.enum(['left', 'center']).optional(), fill: color.optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional(), letterSpacing: finite.optional(), lineHeight: finite.positive().optional() });
 const circleElement = z.object({ ...baseElement, type: z.literal('circle'), radius: finite.nonnegative(), fill: color.optional(), stroke: color.optional() });
 const rectangleElement = z.object({ ...baseElement, type: z.literal('rectangle'), width: finite.nonnegative(), height: finite.nonnegative(), cornerRadius: finite.nonnegative().optional(), fill: color.optional(), stroke: color.optional() });
 const lineElement = z.object({ ...baseElement, type: z.literal('line'), x2: finite, y2: finite, stroke: color.optional(), strokeWidth: finite.nonnegative().optional(), pathProgress: opacity.optional() });

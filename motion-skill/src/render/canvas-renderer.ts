@@ -61,7 +61,7 @@ export class CanvasRenderer {
         lines.forEach((line,lineIndex)=>{
           const graphemes=splitGraphemes(line);
           const widths=graphemes.map(character=>context.measureText(character).width);
-          let cursor=-(widths.reduce((sum,width)=>sum+width,0)+Math.max(0,widths.length-1)*spacing)/2;
+          let cursor=item.textAlign==='left'?0:-(widths.reduce((sum,width)=>sum+width,0)+Math.max(0,widths.length-1)*spacing)/2;
           graphemes.forEach((character,index)=>{context.fillText(character,cursor,lineIndex*lineHeight);cursor+=widths[index]!+spacing;});
         });
         return;
@@ -74,7 +74,7 @@ export class CanvasRenderer {
         this.textMetrics.set(key, metrics);
         if (this.textMetrics.size > 256) this.textMetrics.delete(this.textMetrics.keys().next().value!);
       }
-      context.fillText(content, -metrics.width / 2, 0);
+      context.fillText(content, item.textAlign === 'left' ? 0 : -metrics.width / 2, 0);
       return;
     }
     context.beginPath();

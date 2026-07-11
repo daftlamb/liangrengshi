@@ -35,6 +35,11 @@ describe('CanvasRenderer animated channels',()=>{
     expect(context.fillText).toHaveBeenCalledWith('B',expect.any(Number),0);
     expect(context.fillText).toHaveBeenCalledWith('C',expect.any(Number),20);
   });
+  it('uses a true left text anchor when requested',()=>{
+    const {renderer:r,context}=renderer();
+    r.render([{...text('LEFT'),textAlign:'left',x:88}] as RenderInstance[],composition);
+    expect(context.fillText).toHaveBeenLastCalledWith('LEFT',0,0);
+  });
   it('applies letter spacing to grapheme clusters rather than code points',()=>{
     const {renderer:r,context}=renderer();
     r.render([{...text('e\u0301👩‍💻'),letterSpacing:2}] as RenderInstance[],composition);

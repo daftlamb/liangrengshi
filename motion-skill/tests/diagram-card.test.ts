@@ -28,14 +28,16 @@ describe('diagram cards', () => {
   test('aligns every text hierarchy to the same left grid', () => {
     const scene = composeDiagramCard({ text: '天气和肤质导致化妆品销量降低', seed: 8 });
     const eyebrow = scene.elements.find(element => element.id === 'eyebrow');
+    const title = scene.elements.find(element => element.id === 'title-0');
     const caption = scene.elements.find(element => element.id === 'caption');
-    expect(eyebrow?.x).toBeCloseTo(217.36, 2);
-    expect(caption?.x).toBeCloseTo(217.64, 2);
+    expect(eyebrow).toMatchObject({ x: 88, textAlign: 'left' });
+    expect(title).toMatchObject({ x: 88, y: 180, textAlign: 'left' });
+    expect(caption).toMatchObject({ x: 88, textAlign: 'left' });
   });
 
   test('wraps a result label inside its circle with a safe inset', () => {
     const scene = composeDiagramCard({ text: '天气和肤质导致化妆品销量降低', seed: 8 });
     const label = scene.elements.find(element => element.id === 'result-label');
-    expect(label).toMatchObject({ text: '化妆品销量\n降低', lineHeight: 38 });
+    expect(label).toMatchObject({ text: '化妆品\n销量降低', lineHeight: 38 });
   });
 });
