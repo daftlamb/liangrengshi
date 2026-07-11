@@ -1,6 +1,7 @@
 import type { Scene } from '../model/schema';
 import { centeredPair, leftTextBlock } from '../layout/anchors';
 import { relationEdge } from '../layout/relations';
+import { fitTextInCircle, leftTextLine } from '../layout/text';
 import { analyzeOpinion } from './compose';
 
 const titleLines = (text: string) => text.length > 14 ? `${text.slice(0, 10)}\n${text.slice(10)}` : text;
@@ -45,10 +46,12 @@ export function composeDiagramCard(input: { text: string; seed: number; directio
   const cause = relation === 'propagate' ? input.text.split('导致')[0]?.split(/[和、及]/u).filter(Boolean).slice(0, 2) ?? [] : [];
   const effect = relation === 'propagate' ? input.text.split('导致')[1] : undefined;
   const title = leftTextBlock(titleLines(analysis.text), { left: 88, top: 155, fontSize: 48, lineHeight: 58 });
+  const eyebrow = leftTextLine(`RELATION / ${relation.toUpperCase()}`, { left: 88, y: 105, fontSize: 24 });
+  const caption = leftTextLine('外部条件 → 消费结果', { left: 88, y: 1080, fontSize: 28 });
   const elements: Scene['elements'] = [
     ...title.map((line, index) => ({ id: `title-${index}`, type: 'text' as const, text: line.text, x: line.x, y: line.y, fill: colors.ink, fontFamily, fontSize: 48 })),
-    { id: 'eyebrow', type: 'text', text: `RELATION / ${relation.toUpperCase()}`, x: 225, y: 105, fill: colors.ink, fontFamily: 'Inter Motion', fontSize: 24 },
-    { id: 'caption', type: 'text', text: '外部条件 → 消费结果', x: 255, y: 1080, fill: colors.accent, fontFamily, fontSize: 28 },
+    { id: 'eyebrow', type: 'text', text: eyebrow.text, x: eyebrow.x, y: eyebrow.y, fill: colors.ink, fontFamily: 'Inter Motion', fontSize: 24 },
+    { id: 'caption', type: 'text', text: caption.text, x: caption.x, y: caption.y, fill: colors.accent, fontFamily, fontSize: 28 },
   ];
   const animation: Scene['animation'] = [];
 
@@ -56,15 +59,18 @@ export function composeDiagramCard(input: { text: string; seed: number; directio
     const sourceA = { x: 280, y: 490, radius: 120 };
     const sourceB = { x: 620, y: 490, radius: 120 };
     const result = { x: 450, y: 875, radius: 132 };
+    const sourceALabel = fitTextInCircle(cause[0]!, { radius: sourceA.radius, fontSize: 38, inset: 28, lineHeight: 42 });
+    const sourceBLabel = fitTextInCircle(cause[1]!, { radius: sourceB.radius, fontSize: 38, inset: 28, lineHeight: 42 });
+    const resultLabel = fitTextInCircle(effect, { radius: result.radius, fontSize: 34, inset: 32, lineHeight: 38 });
     const leftEdge = relationEdge({ from: sourceA, to: result, clearance: 14 });
     const rightEdge = relationEdge({ from: sourceB, to: result, clearance: 14 });
     elements.push(
       { id: 'node-a', type: 'circle', ...sourceA, fill: colors.ink },
       { id: 'node-b', type: 'circle', ...sourceB, fill: colors.accent },
       { id: 'result-node', type: 'circle', ...result, fill: colors.ink },
-      { id: 'node-a-label', type: 'text', text: cause[0]!, x: sourceA.x, y: sourceA.y + 12, fill: colors.background, fontFamily, fontSize: 38 },
-      { id: 'node-b-label', type: 'text', text: cause[1]!, x: sourceB.x, y: sourceB.y + 12, fill: colors.background, fontFamily, fontSize: 38 },
-      { id: 'result-label', type: 'text', text: effect, x: result.x, y: result.y + 4, fill: colors.background, fontFamily, fontSize: 34 },
+      { id: 'node-a-label', type: 'text', text: sourceALabel.text, x: sourceA.x, y: sourceA.y + sourceALabel.baselineOffset, fill: colors.background, fontFamily, fontSize: 38, lineHeight: sourceALabel.lineHeight },
+      { id: 'node-b-label', type: 'text', text: sourceBLabel.text, x: sourceB.x, y: sourceB.y + sourceBLabel.baselineOffset, fill: colors.background, fontFamily, fontSize: 38, lineHeight: sourceBLabel.lineHeight },
+      { id: 'result-label', type: 'text', text: resultLabel.text, x: result.x, y: result.y + resultLabel.baselineOffset, fill: colors.background, fontFamily, fontSize: 34, lineHeight: resultLabel.lineHeight },
       { id: 'cause-a-edge', type: 'line', x: leftEdge.start.x, y: leftEdge.start.y, x2: leftEdge.end.x, y2: leftEdge.end.y, stroke: colors.accent, strokeWidth: 5 },
       { id: 'cause-b-edge', type: 'line', x: rightEdge.start.x, y: rightEdge.start.y, x2: rightEdge.end.x, y2: rightEdge.end.y, stroke: colors.accent, strokeWidth: 5 },
       { id: 'cause-a-arrow', type: 'polygon', x: leftEdge.arrow.x, y: leftEdge.arrow.y, rotation: leftEdge.arrow.rotation, points: arrowPoints, fill: colors.accent },

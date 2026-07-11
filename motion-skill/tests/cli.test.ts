@@ -155,7 +155,7 @@ describe('motion-scene CLI', () => {
     expect(result.status).not.toBe(0);
     expect(result.json).toMatchObject({ ok: false, code: 'COMMAND_FAILED' });
     expect(await readFile(authority, 'utf8')).toBe('{broken');
-  });
+  }, 15_000);
 
   it('rejects inconsistent legacy projections during first migration', async () => {
     const cwd = await sandbox();

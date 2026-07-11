@@ -73,6 +73,23 @@ test('keeps a minimal persistent preview connected and rolls back failed renders
   await expect(page.getByRole('heading')).toHaveText('Persistent preview');
 });
 
+test('keeps a portrait scene at its composition aspect ratio when height is constrained', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(server.url);
+  const statePath = path.join(stateDir, 'state.json');
+  const original = await readFile(statePath, 'utf8');
+  try {
+    const portrait = { ...scene(3, 'Portrait'), composition: { ...scene().composition, width: 900, height: 1200 } };
+    await writeFile(statePath, JSON.stringify({ current: portrait, history: [portrait] }));
+    await expect(page.getByRole('heading')).toHaveText('Portrait');
+    const box = await page.locator('canvas').boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width / box!.height).toBeCloseTo(0.75, 2);
+  } finally {
+    await writeFile(statePath, original);
+  }
+});
+
 test('protects rollback reports with origin, session token, JSON, and a hard body limit', async ({ page, request }) => {
   await page.goto(server.url);
   const token = await page.evaluate(async () => ((await fetch('/api/session')).json() as Promise<{ token: string }>).then(value => value.token));

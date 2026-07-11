@@ -6,7 +6,7 @@ h1 { margin: 0 auto 0 0; font-size: 16px; }
 .connection::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: currentColor; }
 main { display: grid; place-items: center; padding: 24px; overflow: hidden; }
 .stage { position: relative; max-width: 100%; max-height: calc(100vh - 160px); }
-canvas { display: block; width: min(80vw, 960px); max-height: calc(100vh - 160px); background: #000; }
+canvas { display: block; width: auto; height: auto; max-width: min(80vw, 960px); max-height: calc(100vh - 160px); background: #000; }
 .show-grid canvas { background-image: linear-gradient(#ffffff15 1px, transparent 1px), linear-gradient(90deg, #ffffff15 1px, transparent 1px); background-size: 24px 24px; }
 .safe-area { display: none; position: absolute; inset: 10%; border: 1px dashed #fff9; pointer-events: none; }
 .show-safe-area .safe-area { display: block; }
