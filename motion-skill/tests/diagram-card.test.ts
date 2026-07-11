@@ -40,4 +40,12 @@ describe('diagram cards', () => {
     const label = scene.elements.find(element => element.id === 'result-label');
     expect(label).toMatchObject({ text: '化妆品\n销量降低', lineHeight: 38 });
   });
+
+  test('adds a quiet dot matrix or grid only when requested', () => {
+    const dots = composeDiagramCard({ text: '冷链波动和价格导致生鲜销量降低', seed: 12, direction: { background: 'dot-matrix' } as never });
+    const grid = composeDiagramCard({ text: '冷链波动和价格导致生鲜销量降低', seed: 12, direction: { background: 'grid' } as never });
+    expect(dots.generators).toContainEqual(expect.objectContaining({ id: 'background-dots', type: 'grid', columns: 12, rows: 16 }));
+    expect(dots.elements.find(element => element.id === 'background-dot')).toMatchObject({ type: 'circle', radius: 3, fill: '#C9C7C0' });
+    expect(grid.elements.filter(element => element.id.startsWith('background-grid-'))).toHaveLength(25);
+  });
 });

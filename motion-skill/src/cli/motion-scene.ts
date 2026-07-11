@@ -23,7 +23,7 @@ const schemas: Record<string, { required?: string[]; repeatable?: string[]; opti
   replace: { options: ['file', 'state-dir'], required: ['file'] }, patch: { options: ['file', 'preserve', 'state-dir'], required: ['file'], repeatable: ['preserve'] },
   undo: { options: ['state-dir'] }, status: { options: ['state-dir'] }, serve: { options: ['state-dir', 'port'] },
   opinion: { options: ['text', 'seed', 'state-dir'], required: ['text'] },
-  diagram: { options: ['text', 'seed', 'state-dir', 'composition', 'palette', 'motion', 'typography'], required: ['text'] },
+  diagram: { options: ['text', 'seed', 'state-dir', 'composition', 'palette', 'motion', 'typography', 'background'], required: ['text'] },
   '__serve-child': { options: ['state-dir', 'port', 'identity', 'session'], required: ['state-dir', 'port', 'identity', 'session'] },
 };
 class CliError extends Error { constructor(message: string, readonly code = 'INVALID_ARGUMENT') { super(message); } }
@@ -71,6 +71,7 @@ function diagramDirectionFor(args: Args): DiagramDirectionInput {
     palette: choice(one(args, 'palette'), '--palette', diagramDirectionValues.palette) as DiagramDirection['palette'] | undefined,
     motion: choice(one(args, 'motion'), '--motion', diagramDirectionValues.motion) as DiagramDirection['motion'] | undefined,
     typography: choice(one(args, 'typography'), '--typography', diagramDirectionValues.typography) as DiagramDirection['typography'] | undefined,
+    background: choice(one(args, 'background'), '--background', diagramDirectionValues.background) as DiagramDirection['background'] | undefined,
   };
 }
 function integer(value: string, name: string, min: number, max: number) {
@@ -214,7 +215,7 @@ async function main() {
     const analysis = analyzeOpinion(text);
     const scene = composeDiagramCard({ text, seed, direction });
     const projectionWarnings = await persist(dir, scene, [scene]);
-    return { ok: true, revision: 0, relation: analysis.relation, emphasis: analysis.emphasis, direction: { composition: direction.composition ?? 'auto', palette: direction.palette ?? 'default', motion: direction.motion ?? 'natural', typography: direction.typography ?? 'sans' }, warnings: [...warningsFor(scene), ...projectionWarnings] };
+    return { ok: true, revision: 0, relation: analysis.relation, emphasis: analysis.emphasis, direction: { composition: direction.composition ?? 'auto', palette: direction.palette ?? 'default', motion: direction.motion ?? 'natural', typography: direction.typography ?? 'sans', background: direction.background ?? 'none' }, warnings: [...warningsFor(scene), ...projectionWarnings] };
   }
   if (args.command === 'init') {
     const seed = integer(one(args, 'seed', '1')!, '--seed', 0, 0xffffffff); const scene = createDefaultScene(one(args, 'name', 'Untitled')!, seed);

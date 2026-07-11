@@ -12,6 +12,7 @@ export const diagramDirectionValues = {
   palette: ['default', 'mono', 'signal-red', 'electric-blue', 'warm-paper'] as const,
   motion: ['calm', 'natural', 'pronounced', 'quick', 'still-first'] as const,
   typography: ['sans', 'editorial-serif', 'mixed', 'brand'] as const,
+  background: ['none', 'dot-matrix', 'grid'] as const,
 };
 
 export type DiagramDirection = { [K in keyof typeof diagramDirectionValues]: (typeof diagramDirectionValues)[K][number] };
@@ -33,7 +34,7 @@ const motionFor = (motion: DiagramDirection['motion']) => {
 const typefaceFor = (typography: DiagramDirection['typography']) => typography === 'editorial-serif' ? 'Songti SC' : 'PingFang SC';
 
 export function resolveDiagramDirection(input: DiagramDirectionInput = {}): DiagramDirection {
-  return { composition: input.composition ?? 'auto', palette: input.palette ?? 'default', motion: input.motion ?? 'natural', typography: input.typography ?? 'sans' };
+  return { composition: input.composition ?? 'auto', palette: input.palette ?? 'default', motion: input.motion ?? 'natural', typography: input.typography ?? 'sans', background: input.background ?? 'none' };
 }
 
 export function composeDiagramCard(input: { text: string; seed: number; direction?: DiagramDirectionInput }): Scene {
@@ -48,7 +49,16 @@ export function composeDiagramCard(input: { text: string; seed: number; directio
   const title = leftTextBlock(titleLines(analysis.text), { left: 88, top: 180, fontSize: 48, lineHeight: 58 });
   const eyebrow = leftTextLine(`RELATION / ${relation.toUpperCase()}`, { left: 88, y: 105, fontSize: 24 });
   const caption = leftTextLine('外部条件 → 消费结果', { left: 88, y: 1080, fontSize: 28 });
+  const backgroundElements: Scene['elements'] = direction.background === 'dot-matrix'
+    ? [{ id: 'background-dot', type: 'circle', x: 54, y: 72, radius: 3, fill: '#C9C7C0' }]
+    : direction.background === 'grid'
+      ? [
+        ...Array.from({ length: 12 }, (_, index) => ({ id: `background-grid-v-${index}`, type: 'line' as const, x: 54 + index * 72, y: 48, x2: 54 + index * 72, y2: 1152, stroke: '#D4D1C8', strokeWidth: 1 })),
+        ...Array.from({ length: 13 }, (_, index) => ({ id: `background-grid-h-${index}`, type: 'line' as const, x: 54, y: 72 + index * 84, x2: 846, y2: 72 + index * 84, stroke: '#D4D1C8', strokeWidth: 1 })),
+      ]
+      : [];
   const elements: Scene['elements'] = [
+    ...backgroundElements,
     ...title.map((line, index) => ({ id: `title-${index}`, type: 'text' as const, text: line.text, x: 88, y: line.y, textAlign: 'left' as const, fill: colors.ink, fontFamily, fontSize: 48 })),
     { id: 'eyebrow', type: 'text', text: eyebrow.text, x: 88, y: eyebrow.y, textAlign: 'left' as const, fill: colors.ink, fontFamily: 'Inter Motion', fontSize: 24 },
     { id: 'caption', type: 'text', text: caption.text, x: 88, y: caption.y, textAlign: 'left' as const, fill: colors.accent, fontFamily, fontSize: 28 },
@@ -107,7 +117,7 @@ export function composeDiagramCard(input: { text: string; seed: number; directio
     metadata: { schemaVersion: 1, revision: 0, seed: input.seed, name: `观点图解卡 · ${relation}` },
     composition: { width: 900, height: 1200, background: colors.background, duration: 5, loop: true, style: 'editorial' },
     elements,
-    generators: [],
+    generators: direction.background === 'dot-matrix' ? [{ id: 'background-dots', type: 'grid', elementId: 'background-dot', columns: 12, rows: 16, gapX: 72, gapY: 72 }] : [],
     behaviors: [
       { id: 'node-pulse', type: 'wave', waveform: 'sine', amplitude: motion.amplitude, frequency: motion.frequency, phase: 0 },
       { id: 'result-pulse', type: 'wave', waveform: 'sine', amplitude: motion.amplitude + 0.02, frequency: motion.frequency, phase: 0.65 },
