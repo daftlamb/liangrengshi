@@ -43,6 +43,7 @@ export function evaluateScene(scene:Scene,frame:FrameContext):RenderInstance[]{
       let color=colorProperty==='fill'&&'fill' in element?element.fill:'stroke' in element?element.stroke:undefined;
       let letterSpacing=element.type==='text'?(element.letterSpacing??0):undefined;
       let lineHeight=element.type==='text'?(element.lineHeight??element.fontSize??32):undefined;
+      let content=instance.content;
       let cornerRadius=element.type==='rectangle'?(element.cornerRadius??0):undefined;
       let width=element.type==='rectangle'?element.width:undefined,height=element.type==='rectangle'?element.height:undefined;
       let pathProgress='pathProgress' in element?(element.pathProgress??1):undefined;
@@ -61,17 +62,28 @@ export function evaluateScene(scene:Scene,frame:FrameContext):RenderInstance[]{
           else if(channel==='color')color=rotateColor(color,delta.value*weight*.5);
           else if(channel==='letterSpacing')letterSpacing=(letterSpacing??0)+delta.value*weight;
           else if(channel==='lineHeight')lineHeight=Math.max(0,(lineHeight??0)+delta.value*weight);
+          else if(channel==='count')content=countContent(element,delta.value*weight);
           else if(channel==='cornerRadius')cornerRadius=Math.max(0,(cornerRadius??0)+delta.value*weight);
           else if(channel==='width')width=Math.max(0,(width??0)+delta.value*weight);
           else if(channel==='height')height=Math.max(0,(height??0)+delta.value*weight);
+          else if(channel==='growX')width=Math.max(0,(element.type==='rectangle'?element.width:0)*Math.max(0,Math.min(1,1+delta.value*weight)));
+          else if(channel==='growY')height=Math.max(0,(element.type==='rectangle'?element.height:0)*Math.max(0,Math.min(1,1+delta.value*weight)));
           else if(channel==='pathProgress')pathProgress=Math.max(0,Math.min(1,(pathProgress??1)+delta.value*weight));
         }
       }
-      return {...element,...(color?{[colorProperty]:color}:{}),...(letterSpacing!==undefined?{letterSpacing}:{}),...(lineHeight!==undefined?{lineHeight}:{}),...(cornerRadius!==undefined?{cornerRadius}:{}),...(width!==undefined?{width}:{}),...(height!==undefined?{height}:{}),...(pathProgress!==undefined?{pathProgress}:{}),instanceId:instance.id,x,y,rotation,scale:Math.max(0,finite(scale)),opacity:Math.max(0,Math.min(1,finite(opacity))),content:instance.content};
+      return {...element,...(color?{[colorProperty]:color}:{}),...(letterSpacing!==undefined?{letterSpacing}:{}),...(lineHeight!==undefined?{lineHeight}:{}),...(cornerRadius!==undefined?{cornerRadius}:{}),...(width!==undefined?{width}:{}),...(height!==undefined?{height}:{}),...(pathProgress!==undefined?{pathProgress}:{}),instanceId:instance.id,x,y,rotation,scale:Math.max(0,finite(scale)),opacity:Math.max(0,Math.min(1,finite(opacity))),content};
     });
   });
 }
 const finite=(value:number)=>Number.isFinite(value)?value:0;
+function countContent(element:Element,rawProgress:number):string|undefined {
+  if(element.type!=='text')return undefined;
+  const match=/^(-?\d+(?:\.\d+)?)(.*)$/u.exec(element.text.trim());
+  if(!match)return element.text;
+  const target=Number(match[1]),suffix=match[2]??'',progress=Math.max(0,Math.min(1,1+rawProgress));
+  const value=target*progress,decimals=(match[1].split('.')[1]??'').length;
+  return `${decimals?value.toFixed(decimals):String(Math.round(value))}${suffix}`;
+}
 function rotateColor(color:string|undefined,turns:number):string|undefined {
   if(!color)return color;
   const match=/^#([\da-f]{3}|[\da-f]{6})$/i.exec(color);

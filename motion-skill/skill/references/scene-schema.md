@@ -35,10 +35,11 @@ Every element accepts `id` and optional `x`, `y`, `rotation`, nonnegative `scale
 
 - `text`: `text`; optional `split` (`none`, `lines`, `words`, `characters`), `fill`, `fontFamily`, positive `fontSize`.
 - `circle`: nonnegative `radius`; optional `fill`, `stroke`.
-- `rectangle`: nonnegative `width`, `height`; optional nonnegative `cornerRadius`, `fill`, `stroke`.
+- `rectangle`: nonnegative `width`, `height`; optional `origin` (`top`, `bottom`, or `bottom-center`); optional nonnegative `cornerRadius`, `fill`, `stroke`. Use `origin: "bottom-center"` for bars that should grow upward from their own baseline.
 - `line`: `x2`, `y2`; optional `stroke`, nonnegative `strokeWidth`.
 - `polygon`: `points`, an array of at least three `{x,y}` points; optional `fill`, `stroke`.
 - `star`: integer `points` of at least 2, nonnegative `innerRadius`, `outerRadius`; optional `fill`, `stroke`.
+- `sector`: nonnegative `innerRadius`, `outerRadius`; numeric `startAngle`, `endAngle` in radians; optional `fill`, `stroke`, `pathProgress`. Use for pie and donut charts.
 - `group`: `childIds`. Children must exist, be unique, have at most one parent, and form no cycles. A group cannot be a generator or behavior target.
 
 ```json
@@ -49,6 +50,7 @@ Every element accepts `id` and optional `x`, `y`, `rotation`, nonnegative `scale
   { "id": "guide", "type": "line", "x": 80, "y": 270, "x2": 880, "y2": 270, "stroke": "#777777", "strokeWidth": 2 },
   { "id": "triangle", "type": "polygon", "points": [{ "x": 0, "y": -30 }, { "x": 28, "y": 22 }, { "x": -28, "y": 22 }], "fill": "#ffd166" },
   { "id": "spark", "type": "star", "points": 5, "innerRadius": 10, "outerRadius": 24, "fill": "#fee440" },
+  { "id": "slice", "type": "sector", "innerRadius": 72, "outerRadius": 120, "startAngle": -1.57, "endAngle": 0.8, "fill": "#1747FF" },
   { "id": "lockup", "type": "group", "childIds": ["copy", "disc"] }
 ]
 ```
@@ -80,6 +82,7 @@ These are individual shape examples; do not combine them unchanged because gener
 - `wave`: optional `waveform` (`sine`, `triangle`, `saw`), `amplitude`, `frequency`, `phase`.
 - `noise`: required integer `seed`; optional `amplitude`, `frequency`.
 - `spring`: optional nonnegative `stiffness`, `damping`.
+- `ramp`: optional nonnegative `delay`, positive `duration`, nonnegative `hold`, positive `cycle`; emits `-1` before delay and reaches `0` at the end of the ramp. Use the same `cycle` across a delayed sequence when marks should finish, pause, and replay together.
 - `follow`: required drawable `targetElementId`.
 - `lookAt`: required drawable `targetElementId`.
 - `attract`: required drawable `targetElementId`; optional `strength`.
@@ -90,6 +93,7 @@ These are individual shape examples; do not combine them unchanged because gener
   { "id": "breathe", "type": "wave", "waveform": "sine", "amplitude": 0.2, "frequency": 0.25, "phase": 0 },
   { "id": "drift", "type": "noise", "amplitude": 12, "frequency": 0.15, "seed": 7 },
   { "id": "settle", "type": "spring", "stiffness": 90, "damping": 14 },
+  { "id": "bar-in", "type": "ramp", "delay": 0.3, "duration": 0.62, "hold": 2.2, "cycle": 4.02 },
   { "id": "chase", "type": "follow", "targetElementId": "disc" },
   { "id": "face", "type": "lookAt", "targetElementId": "disc" },
   { "id": "pull", "type": "attract", "targetElementId": "disc", "strength": 0.4 },
@@ -117,4 +121,4 @@ All falloffs accept optional easing `linear`, `easeIn`, `easeOut`, or `easeInOut
 ]
 ```
 
-An animation binding requires `id`, existing `elementId`, existing `behaviorId`, `falloffIds`, channels, and role. Valid channels are `x`, `y`, `rotation`, `scale`, `opacity`, `color`, `letterSpacing`, `lineHeight`, `cornerRadius`, `width`, `height`, and `pathProgress`. Numeric behavior output is added to position, rotation, typography, rectangle dimensions, corner radius, and path progress; scale and opacity use `base * (1 + output)`; color is parsed from hex, rotated numerically by one half-turn per output unit, and emitted deterministically as `#RRGGBB`. Falloff weight multiplies the output before composition. Dimensions are clamped nonnegative, opacity and path progress to 0–1. `pathProgress` draws a proportional line or closed-path perimeter. Element/channel compatibility is validated. A scene permits at most one `primary` and two `supporting` bindings; this is a hard v1 limit.
+An animation binding requires `id`, existing `elementId`, existing `behaviorId`, `falloffIds`, channels, and role. Valid channels are `x`, `y`, `rotation`, `scale`, `opacity`, `color`, `letterSpacing`, `lineHeight`, `cornerRadius`, `width`, `height`, `growX`, `growY`, `pathProgress`, and `count`. Numeric behavior output is added to position, rotation, typography, rectangle dimensions, corner radius, and path progress; scale and opacity use `base * (1 + output)`; `growY` is rectangle-only and maps behavior output `-1..0` to `0..base height` for bottom-up bar growth; `growX` is rectangle-only and maps behavior output `-1..0` to `0..base width` for left-to-right ranking bars; `count` is text-only and counts numeric text from 0 to its target while preserving suffixes like `%`; color is parsed from hex, rotated numerically by one half-turn per output unit, and emitted deterministically as `#RRGGBB`. Falloff weight multiplies the output before composition. Dimensions are clamped nonnegative, opacity and path progress to 0–1. `pathProgress` draws a proportional line, closed-path perimeter, or sector sweep. Element/channel compatibility is validated. A scene permits at most one `primary` and twenty-four `supporting` bindings, which gives CSV charts enough room for sequential marks and counting labels while still keeping motion bounded.

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const id = z.string().min(1);
+const maximumSupportingBindings = 24;
 const finite = z.number().finite();
 const opacity = finite.min(0).max(1);
 const color = z.string().regex(/^#(?:[\da-f]{3}|[\da-f]{6})$/i, 'Color must be #RGB or #RRGGBB');
@@ -9,12 +10,13 @@ const baseElement = { id, opacity: opacity.optional(), x: finite.optional(), y: 
 
 const textElement = z.object({ ...baseElement, type: z.literal('text'), text: z.string(), split: z.enum(['none', 'lines', 'words', 'characters']).optional(), textAlign: z.enum(['left', 'center']).optional(), fill: color.optional(), fontFamily: z.string().optional(), fontSize: finite.positive().optional(), letterSpacing: finite.optional(), lineHeight: finite.positive().optional() });
 const circleElement = z.object({ ...baseElement, type: z.literal('circle'), radius: finite.nonnegative(), fill: color.optional(), stroke: color.optional() });
-const rectangleElement = z.object({ ...baseElement, type: z.literal('rectangle'), width: finite.nonnegative(), height: finite.nonnegative(), cornerRadius: finite.nonnegative().optional(), fill: color.optional(), stroke: color.optional() });
+const rectangleElement = z.object({ ...baseElement, type: z.literal('rectangle'), origin: z.enum(['top', 'bottom', 'bottom-center']).optional(), width: finite.nonnegative(), height: finite.nonnegative(), cornerRadius: finite.nonnegative().optional(), fill: color.optional(), stroke: color.optional() });
 const lineElement = z.object({ ...baseElement, type: z.literal('line'), x2: finite, y2: finite, stroke: color.optional(), strokeWidth: finite.nonnegative().optional(), pathProgress: opacity.optional() });
 const polygonElement = z.object({ ...baseElement, type: z.literal('polygon'), points: z.array(point).min(3), fill: color.optional(), stroke: color.optional(), pathProgress: opacity.optional() });
 const starElement = z.object({ ...baseElement, type: z.literal('star'), points: z.number().int().min(2), innerRadius: finite.nonnegative(), outerRadius: finite.nonnegative(), fill: color.optional(), stroke: color.optional(), pathProgress: opacity.optional() });
+const sectorElement = z.object({ ...baseElement, type: z.literal('sector'), innerRadius: finite.nonnegative(), outerRadius: finite.nonnegative(), startAngle: finite, endAngle: finite, fill: color.optional(), stroke: color.optional(), pathProgress: opacity.optional() }).refine(({ innerRadius, outerRadius }) => innerRadius <= outerRadius, { message: 'innerRadius must not exceed outerRadius' });
 const groupElement = z.object({ ...baseElement, type: z.literal('group'), childIds: z.array(id) });
-export const elementSchema = z.discriminatedUnion('type', [textElement, circleElement, rectangleElement, lineElement, polygonElement, starElement, groupElement]);
+export const elementSchema = z.discriminatedUnion('type', [textElement, circleElement, rectangleElement, lineElement, polygonElement, starElement, sectorElement, groupElement]);
 
 const generatorBase = { id, elementId: id, count: z.number().int().positive().optional() };
 export const generatorSchema = z.discriminatedUnion('type', [
@@ -30,6 +32,7 @@ export const behaviorSchema = z.discriminatedUnion('type', [
   z.object({ ...behaviorBase, type: z.literal('wave'), waveform: z.enum(['sine', 'triangle', 'saw']).optional(), amplitude: finite.optional(), frequency: finite.optional(), phase: finite.optional() }),
   z.object({ ...behaviorBase, type: z.literal('noise'), amplitude: finite.optional(), frequency: finite.optional(), seed: z.number().int() }),
   z.object({ ...behaviorBase, type: z.literal('spring'), stiffness: finite.nonnegative().optional(), damping: finite.nonnegative().optional() }),
+  z.object({ ...behaviorBase, type: z.literal('ramp'), delay: finite.nonnegative().optional(), duration: finite.positive().optional(), hold: finite.nonnegative().optional(), cycle: finite.positive().optional() }),
   z.object({ ...behaviorBase, type: z.literal('follow'), targetElementId: id }),
   z.object({ ...behaviorBase, type: z.literal('lookAt'), targetElementId: id }),
   z.object({ ...behaviorBase, type: z.literal('attract'), targetElementId: id, strength: finite.optional() }),
@@ -48,7 +51,7 @@ export const falloffSchema = z.discriminatedUnion('type', [
 
 export const animationBindingSchema = z.object({
   id, elementId: id, behaviorId: id, falloffIds: z.array(id),
-  channels: z.array(z.enum(['x', 'y', 'rotation', 'scale', 'opacity', 'color', 'letterSpacing', 'lineHeight', 'cornerRadius', 'width', 'height', 'pathProgress'])),
+  channels: z.array(z.enum(['x', 'y', 'rotation', 'scale', 'opacity', 'color', 'letterSpacing', 'lineHeight', 'cornerRadius', 'width', 'height', 'growX', 'growY', 'pathProgress', 'count'])),
   role: z.enum(['primary', 'supporting']),
 });
 
@@ -65,14 +68,14 @@ export const sceneSchema = z.object({
   const primaryBindings = scene.animation.filter(({ role }) => role === 'primary').length;
   const supportingBindings = scene.animation.filter(({ role }) => role === 'supporting').length;
   if (primaryBindings > 1) ctx.addIssue({ code: 'custom', path: ['animation'], message: 'At most one primary animation binding is allowed' });
-  if (supportingBindings > 2) ctx.addIssue({ code: 'custom', path: ['animation'], message: 'At most two supporting animation bindings are allowed' });
+  if (supportingBindings > maximumSupportingBindings) ctx.addIssue({ code: 'custom', path: ['animation'], message: 'At most twenty-four supporting animation bindings are allowed' });
   for (const [index, binding] of scene.animation.entries()) {
     if (!elementIds.has(binding.elementId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'elementId'], message: 'Unknown element reference' });
     if (!behaviorIds.has(binding.behaviorId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'behaviorId'], message: 'Unknown behavior reference' });
     binding.falloffIds.forEach((falloffId, falloffIndex) => { if (!falloffIds.has(falloffId)) ctx.addIssue({ code: 'custom', path: ['animation', index, 'falloffIds', falloffIndex], message: 'Unknown falloff reference' }); });
     const element=scene.elements.find(item=>item.id===binding.elementId);
     const common=['x','y','rotation','scale','opacity'];
-    const allowed:Record<Element['type'],string[]>={text:[...common,'color','letterSpacing','lineHeight'],circle:[...common,'color'],rectangle:[...common,'color','cornerRadius','width','height'],line:[...common,'color','pathProgress'],polygon:[...common,'color','pathProgress'],star:[...common,'color','pathProgress'],group:common};
+    const allowed:Record<Element['type'],string[]>={text:[...common,'color','letterSpacing','lineHeight','count'],circle:[...common,'color'],rectangle:[...common,'color','cornerRadius','width','height','growX','growY'],line:[...common,'color','pathProgress'],polygon:[...common,'color','pathProgress'],star:[...common,'color','pathProgress'],sector:[...common,'color','pathProgress'],group:common};
     if(element)binding.channels.forEach((channel,channelIndex)=>{if(!allowed[element.type].includes(channel))ctx.addIssue({code:'custom',path:['animation',index,'channels',channelIndex],message:`Channel ${channel} is invalid for ${element.type}`});});
   }
   scene.elements.forEach((element, index) => { if (element.type === 'group') {

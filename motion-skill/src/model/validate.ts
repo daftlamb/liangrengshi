@@ -10,12 +10,13 @@ export interface CostReport {
 
 const commonChannels = new Set(['x', 'y', 'rotation', 'scale', 'opacity']);
 const typeChannels: Record<Scene['elements'][number]['type'], ReadonlySet<string>> = {
-  text: new Set([...commonChannels, 'color', 'letterSpacing', 'lineHeight']),
+  text: new Set([...commonChannels, 'color', 'letterSpacing', 'lineHeight', 'count']),
   circle: new Set([...commonChannels, 'color']),
-  rectangle: new Set([...commonChannels, 'color', 'cornerRadius', 'width', 'height']),
+  rectangle: new Set([...commonChannels, 'color', 'cornerRadius', 'width', 'height', 'growX', 'growY']),
   line: new Set([...commonChannels, 'color', 'pathProgress']),
   polygon: new Set([...commonChannels, 'color', 'pathProgress']),
   star: new Set([...commonChannels, 'color', 'pathProgress']),
+  sector: new Set([...commonChannels, 'color', 'pathProgress']),
   group: commonChannels,
 };
 

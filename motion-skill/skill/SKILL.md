@@ -28,6 +28,13 @@ Use the automatic direction by default. If the request names a visual preference
 - `--motion`: `calm`, `natural`, `pronounced`, `quick`, `still-first`
 - `--typography`: `sans`, `editorial-serif`, `mixed`, `brand`
 
+When the user provides a CSV or asks for automatic data visualization, use the CSV route. It reads the table, chooses an available chart type, and writes the preview state directly. It automatically renders short composition datasets as donut charts, time-series datasets as line charts, ranking-shaped data as ranking bars, and larger category datasets as vertical bars. If the user explicitly asks for a chart family, pass the matching `--chart` value instead of relying on automatic selection.
+
+`npm exec -- vite-node src/cli/motion-scene.ts csv --file data.csv --chart auto --seed 1 --state-dir .motion-scene`
+
+- `--chart`: `auto`, `donut`, `bar`, `line`, `ranking-bar`
+- To create a packaged Live Photo directly from a CSV chart, add `--export live-photo --out output/live-photo`.
+
 ## Workflow
 
 Run every CLI example from the `motion-skill` package directory. The documented `npm exec -- vite-node src/cli/motion-scene.ts` runner is package-local and real. Keep one state directory for the conversation and one temporary working directory for candidate JSON and patches.
@@ -74,11 +81,17 @@ motion-skill/skill/scripts/preview.sh --state-dir .motion-scene --port 0
 
 ## Live Photo packaging
 
-Treat the still card as the primary design. After an external renderer has produced a readable key JPG and a five-second H.264 MOV for Xiaohongshu, package them without duplicating Apple metadata logic:
+Treat the still card as the primary design. Live Photo export is intentionally limited to a readable key JPG, a silent motion MOV, and package handoff. Do not add audio, filters, or video-editing controls.
+
+To export the current scene as Live Photo assets and package them, use:
+
+`npm exec -- vite-node src/cli/motion-scene.ts export --format live-photo --out output/live-photo --state-dir .motion-scene`
+
+For manual packaging of already-rendered assets, use the adapter without duplicating Apple metadata logic:
 
 `python3 skill/scripts/package-live-photo.py output/key.jpg output/motion.mov --platform xiaohongshu`
 
-This adapter packages existing assets only; never claim it rendered the JPG/MOV. Keep generated files in a task/output directory, not in the skill root.
+Keep generated files in a task/output directory, not in the skill root.
 
 ## JSON Patch rules
 

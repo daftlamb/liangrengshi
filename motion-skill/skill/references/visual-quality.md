@@ -6,11 +6,19 @@ Start at 960×540, 3–5 seconds, looped, with one background, a small palette, 
 
 ## Motion hierarchy
 
-Use at most one primary and two supporting animation bindings (also enforced by schema). A behavior may drive multiple channels, but channel combinations must feel related. Remove a supporting behavior before increasing overall intensity.
+Use at most one primary animation binding. For hand-authored motion, prefer one or two supporting bindings; data charts may use more supporting bindings so each mark and value can enter clearly, but the motion should still read as one coordinated rhythm. A behavior may drive multiple channels, but channel combinations must feel related. Remove a supporting behavior before increasing overall intensity.
 
 ## Loops
 
 For seamless loops, favor sine waves and frequencies whose cycles resolve within the composition duration. Avoid visible jumps, late entrances that never settle, and random values that change between runs. Seed noise, scatter, and random falloffs.
+
+## Data chart motion style
+
+For lightweight charts, use the same modernist data-card rhythm by default. Vertical bars grow from their own bottom center with `growY`; ranking bars grow left-to-right with `growX`; line charts draw progressively with `pathProgress`; donut slices sweep with `pathProgress`; numeric labels use `count` plus `opacity` so they roll from 0 to the target while appearing. Keep all chart ramps on the composition duration, usually 5 seconds, so marks finish, hold, and replay together instead of resetting early.
+
+Use a seeded, shuffled discrete palette for data marks, with black type and axes. Do not ask the user to specify routine bar colors, number counting, or basic chart timing unless they request a different style.
+
+For donut or pie-style CSV cards, keep legends inside the portrait card automatically. Up to six slices can use the roomy single-column legend. More than six slices should switch to a compact two-column legend with slightly smaller labels and swatches; reduce and lift the donut so the chart bottom and first legend row keep a clear safety gap. Do not let the legend extend past the lower safe area or visually overlap the donut.
 
 ## Legibility
 

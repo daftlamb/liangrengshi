@@ -52,9 +52,21 @@ describe('CanvasRenderer animated channels',()=>{
     r.render([{id:'r',instanceId:'r:0',type:'rectangle',width:11,height:21,cornerRadius:4,x:0,y:0,rotation:0,scale:1,opacity:1}] as RenderInstance[],composition);
     expect(context.roundRect).toHaveBeenCalledWith(0,0,11,21,4);
   });
+  it('anchors bottom-centered rectangles on their own baseline',()=>{
+    const {renderer:r,context}=renderer();
+    r.render([{id:'r',instanceId:'r:0',type:'rectangle',origin:'bottom-center',width:72,height:100,x:0,y:0,rotation:0,scale:1,opacity:1}] as RenderInstance[],composition);
+    expect(context.roundRect).toHaveBeenCalledWith(-36,-100,72,100,0);
+  });
   it('draws line and closed geometry only through animated path progress',()=>{
     const {renderer:r,context}=renderer();
     r.render([{id:'l',instanceId:'l:0',type:'line',x:0,y:0,x2:100,y2:0,pathProgress:.25,stroke:'#fff',rotation:0,scale:1,opacity:1}] as RenderInstance[],composition);
     expect(context.lineTo).toHaveBeenCalledWith(25,0);
+  });
+  it('draws donut sectors with progressive sweep',()=>{
+    const {renderer:r,context}=renderer();
+    r.render([{id:'s',instanceId:'s:0',type:'sector',innerRadius:30,outerRadius:60,startAngle:0,endAngle:Math.PI,pathProgress:.5,fill:'#fff',x:0,y:0,rotation:0,scale:1,opacity:1}] as RenderInstance[],composition);
+    expect(context.arc).toHaveBeenNthCalledWith(1,0,0,60,0,Math.PI/2,false);
+    expect(context.arc).toHaveBeenNthCalledWith(2,0,0,30,Math.PI/2,0,true);
+    expect(context.closePath).toHaveBeenCalled();
   });
 });

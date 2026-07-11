@@ -35,12 +35,13 @@ describe('sceneSchema', () => {
     const behaviors = Array.from({ length: 4 }, (_, index) => ({ id: `b${index}`, type: 'wave', amplitude: 1, frequency: 1, phase: 0 }));
     expect(sceneSchema.safeParse({ ...minimalScene, behaviors }).success).toBe(true);
   });
-  it('limits bindings to one primary and two supporting roles', () => {
-    const behaviors = Array.from({ length: 4 }, (_, index) => ({ id: `b${index}`, type: 'wave' as const }));
+  it('limits bindings to one primary and twenty-four supporting roles', () => {
+    const behaviors = Array.from({ length: 26 }, (_, index) => ({ id: `b${index}`, type: 'wave' as const }));
     const binding = (index: number, role: 'primary' | 'supporting') => ({ id: `a${index}`, elementId: 'title', behaviorId: `b${index}`, falloffIds: [], channels: ['x'] as const, role });
     expect(sceneSchema.safeParse({ ...minimalScene, behaviors, animation: [binding(0, 'primary'), binding(1, 'supporting'), binding(2, 'supporting')] }).success).toBe(true);
+    expect(sceneSchema.safeParse({ ...minimalScene, behaviors, animation: [binding(0, 'primary'), ...Array.from({ length: 24 }, (_, index) => binding(index + 1, 'supporting'))] }).success).toBe(true);
     expect(sceneSchema.safeParse({ ...minimalScene, behaviors, animation: [binding(0, 'primary'), binding(1, 'primary')] }).success).toBe(false);
-    expect(sceneSchema.safeParse({ ...minimalScene, behaviors, animation: [binding(0, 'supporting'), binding(1, 'supporting'), binding(2, 'supporting')] }).success).toBe(false);
+    expect(sceneSchema.safeParse({ ...minimalScene, behaviors, animation: Array.from({ length: 25 }, (_, index) => binding(index, 'supporting')) }).success).toBe(false);
   });
   it('rejects unseeded noise behavior', () => expect(sceneSchema.safeParse({ ...minimalScene, behaviors: [{ id: 'noise', type: 'noise' }] }).success).toBe(false));
   it('accepts selectable waveforms', () => expect(sceneSchema.parse({ ...minimalScene, behaviors: [{ id: 'wave', type: 'wave', waveform: 'triangle' }] }).behaviors[0]).toMatchObject({waveform:'triangle'}));
@@ -58,10 +59,10 @@ describe('sceneSchema', () => {
     const elements = [
       minimalScene.elements[0], { id: 'circle', type: 'circle', radius: 2 }, { id: 'rectangle', type: 'rectangle', width: 2, height: 3 },
       { id: 'line', type: 'line', x2: 2, y2: 3 }, { id: 'polygon', type: 'polygon', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] },
-      { id: 'star', type: 'star', points: 5, innerRadius: 1, outerRadius: 2 }, { id: 'group', type: 'group', childIds: ['title'] },
+      { id: 'star', type: 'star', points: 5, innerRadius: 1, outerRadius: 2 }, { id: 'sector', type: 'sector', innerRadius: 1, outerRadius: 2, startAngle: 0, endAngle: 1 }, { id: 'group', type: 'group', childIds: ['title'] },
     ];
     const generators = [{ id: 'gl', type: 'linear', elementId: 'title' }, { id: 'gg', type: 'grid', elementId: 'circle' }, { id: 'gr', type: 'radial', elementId: 'rectangle' }, { id: 'gp', type: 'path', elementId: 'polygon', pathElementId: 'line' }, { id: 'gs', type: 'scatter', elementId: 'star', seed: 1 }];
-    const behaviors = [{ id: 'wave', type: 'wave' }, { id: 'noise', type: 'noise', seed: 1 }, { id: 'spring', type: 'spring' }, { id: 'follow', type: 'follow', targetElementId: 'title' }, { id: 'look', type: 'lookAt', targetElementId: 'title' }, { id: 'attract', type: 'attract', targetElementId: 'title' }, { id: 'repel', type: 'repel' }];
+    const behaviors = [{ id: 'wave', type: 'wave' }, { id: 'noise', type: 'noise', seed: 1 }, { id: 'spring', type: 'spring' }, { id: 'follow', type: 'follow', targetElementId: 'title' }, { id: 'look', type: 'lookAt', targetElementId: 'title' }, { id: 'attract', type: 'attract', targetElementId: 'title' }, { id: 'repel', type: 'repel' }, { id: 'ramp', type: 'ramp', cycle: 3 }];
     const falloffs = [{ id: 'fl', type: 'linear' }, { id: 'fr', type: 'radial' }, { id: 'fi', type: 'index' }, { id: 'fx', type: 'random', seed: 1 }, { id: 'ft', type: 'time' }];
     expect(sceneSchema.safeParse({ ...minimalScene, elements, generators, behaviors, falloffs }).success).toBe(true);
   });

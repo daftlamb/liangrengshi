@@ -27,6 +27,11 @@ export function evaluateBehavior(behavior:Behavior, context:BehaviorContext):Cha
     const response=1-Math.exp(-Math.max(0,time)*Math.max(1,damping)*.5)*Math.cos(Math.sqrt(stiffness)*Math.max(0,time));
     return empty(Math.max(-1,Math.min(1,response)));
   }
+  if(behavior.type==='ramp'){
+    const delay=behavior.delay??0,duration=behavior.duration??.35,hold=behavior.hold??1.8,cycle=behavior.cycle??(delay+duration+hold);
+    const local=((((Math.max(0,time)%cycle)+cycle)%cycle)-delay)/duration;
+    return empty(-1+Math.max(0,Math.min(1,local)));
+  }
   const target=context.target??(context.pointer.active?context.pointer:context.position);
   const dx=finite(target.x-context.position.x),dy=finite(target.y-context.position.y);
   if(behavior.type==='lookAt') return {...empty(),rotation:Math.atan2(dy,dx)};

@@ -79,7 +79,7 @@ export class CanvasRenderer {
     }
     context.beginPath();
     if (instance.type === 'circle') context.arc(0, 0, (instance as RenderInstance & Extract<Element, { type: 'circle' }>).radius, 0, Math.PI * 2);
-    else if (instance.type === 'rectangle') { const item = instance as RenderInstance & Extract<Element, { type: 'rectangle' }>; context.roundRect(0, 0, item.width, item.height, item.cornerRadius ?? 0); }
+    else if (instance.type === 'rectangle') { const item = instance as RenderInstance & Extract<Element, { type: 'rectangle' }>; context.roundRect(item.origin === 'bottom-center' ? -item.width / 2 : 0, item.origin === 'bottom' || item.origin === 'bottom-center' ? -item.height : 0, item.width, item.height, item.cornerRadius ?? 0); }
     else if (instance.type === 'line') { const item = instance as RenderInstance & Extract<Element, { type: 'line' }>; const progress=item.pathProgress??1; context.moveTo(0, 0); context.lineTo((item.x2-item.x)*progress,(item.y2-item.y)*progress); }
     else if (instance.type === 'polygon') { const item = instance as RenderInstance & Extract<Element, { type: 'polygon' }>; this.drawProgressivePath(item.points,item.pathProgress??1); }
     else if (instance.type === 'star') {
@@ -93,6 +93,7 @@ export class CanvasRenderer {
       }
       this.drawProgressivePath(vertices,item.pathProgress??1);
     }
+    else if (instance.type === 'sector') { const item = instance as RenderInstance & Extract<Element, { type: 'sector' }>; this.drawSector(item); }
     else throw new Error(`Unsupported render instance type: ${(instance as { type?: unknown }).type ?? 'unknown'}`);
     const painted = instance as RenderInstance & { fill?: string; stroke?: string; strokeWidth?: number };
     if (painted.fill) { context.fillStyle = painted.fill; context.fill(); }
@@ -109,5 +110,19 @@ export class CanvasRenderer {
       context.lineTo(start.x+(end.x-start.x)*amount,start.y+(end.y-start.y)*amount); remaining-=lengths[index]!;
     }
     if(progress>=1)context.closePath();
+  }
+
+  private drawSector(item: RenderInstance & Extract<Element, { type: 'sector' }>): void {
+    const context=this.context,progress=Math.max(0,Math.min(1,item.pathProgress??1));
+    const end=item.startAngle+(item.endAngle-item.startAngle)*progress;
+    const outerStart={x:Math.cos(item.startAngle)*item.outerRadius,y:Math.sin(item.startAngle)*item.outerRadius};
+    const innerEnd={x:Math.cos(end)*item.innerRadius,y:Math.sin(end)*item.innerRadius};
+    context.moveTo(outerStart.x,outerStart.y);
+    context.arc(0,0,item.outerRadius,item.startAngle,end,false);
+    if(item.innerRadius>0){
+      context.lineTo(innerEnd.x,innerEnd.y);
+      context.arc(0,0,item.innerRadius,end,item.startAngle,true);
+    } else context.lineTo(0,0);
+    context.closePath();
   }
 }

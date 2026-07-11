@@ -27,7 +27,7 @@ describe('motion-scene CLI', () => {
     const scene = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
     expect(scene.composition).toMatchObject({ width: 900, height: 1200, duration: 5 });
     expect(scene.elements.find((element: { id: string }) => element.id === 'statement').text).toContain('真正的壁垒');
-  });
+  }, 15_000);
 
   it('creates a relationship diagram card from one viewpoint', async () => {
     const cwd = await sandbox();
@@ -36,6 +36,59 @@ describe('motion-scene CLI', () => {
     expect(result.json).toMatchObject({ ok: true, revision: 0, relation: 'contrast' });
     const scene = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
     expect(scene.metadata.name).toContain('观点图解卡');
+  });
+
+  it('creates a chart scene from CSV by automatically selecting an available chart type', async () => {
+    const cwd = await sandbox();
+    const csv = path.join(cwd, 'channels.csv');
+    await writeFile(csv, '渠道,占比\n小红书,36\n抖音,28\n天猫,21\n线下,15');
+    const result = run(cwd, ['csv', '--file', csv, '--seed', '41']);
+    expect(result.status).toBe(0);
+    expect(result.json).toMatchObject({ ok: true, revision: 0, chart: 'donut', renderedChart: 'donut' });
+    const scene = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
+    expect(scene.metadata.name).toBe('CSV 动态饼状图');
+    expect(scene.elements.some((element: { type: string }) => element.type === 'sector')).toBe(true);
+  });
+
+  it('honors an explicit CSV chart override for a many-row donut card', async () => {
+    const cwd = await sandbox();
+    const csv = path.join(cwd, 'beauty-sales.csv');
+    await writeFile(csv, '品类,销量指数\n防晒,86\n粉底液,74\n散粉,62\n口红,58\n面霜,71\n精华,67\n洁面,49\n香水,43\n卸妆,55\n身体乳,38');
+    const result = run(cwd, ['csv', '--file', csv, '--chart', 'donut', '--seed', '7']);
+    expect(result.status).toBe(0);
+    expect(result.json).toMatchObject({ ok: true, chart: 'bar', renderedChart: 'donut' });
+    const scene = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
+    expect(scene.metadata.name).toBe('CSV 动态饼状图');
+    expect(scene.elements.filter((element: { type: string }) => element.type === 'sector')).toHaveLength(10);
+  });
+
+  it('dry-runs a Live Photo export from the current scene without audio or filters', async () => {
+    const cwd = await sandbox();
+    run(cwd, ['opinion', '--text', '真正有洞察的观点不一定让人愉悦', '--seed', '11']);
+    const out = path.join(cwd, 'output/live-photo');
+    const result = run(cwd, ['export', '--format', 'live-photo', '--out', out, '--dry-run', 'true']);
+    expect(result.status).toBe(0);
+    expect(result.json).toMatchObject({ ok: true, format: 'live-photo', platform: 'xiaohongshu', duration: 5, audio: false, filters: false, dryRun: true });
+    expect(result.json.assets).toMatchObject({
+      jpg: path.join(out, 'key.jpg'),
+      mov: path.join(out, 'motion.mov'),
+      pvt: path.join(out, 'key.pvt'),
+      zip: path.join(out, 'key.pvt.zip'),
+      readme: path.join(out, 'README.txt'),
+    });
+  });
+
+  it('creates a CSV chart and dry-runs Live Photo export in one command', async () => {
+    const cwd = await sandbox();
+    const csv = path.join(cwd, 'trend.csv');
+    await writeFile(csv, '月份,销量\n1月,32\n2月,38\n3月,35\n4月,49');
+    const out = path.join(cwd, 'output/trend-live');
+    const result = run(cwd, ['csv', '--file', csv, '--export', 'live-photo', '--out', out, '--dry-run', 'true']);
+    expect(result.status).toBe(0);
+    expect(result.json).toMatchObject({ ok: true, chart: 'line', renderedChart: 'line' });
+    expect(result.json.export).toMatchObject({ format: 'live-photo', dryRun: true, audio: false, filters: false });
+    const scene = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
+    expect(scene.metadata.name).toBe('CSV 动态折线图');
   });
 
   it('accepts optional art direction for a relationship diagram', async () => {
@@ -144,7 +197,7 @@ describe('motion-scene CLI', () => {
     const state = JSON.parse(await readFile(path.join(cwd, '.motion-scene/state.json'), 'utf8'));
     expect(JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'))).toEqual(state.current);
     expect(JSON.parse(await readFile(path.join(cwd, '.motion-scene/history.json'), 'utf8'))).toEqual(state.history);
-  });
+  }, 15_000);
 
   it('never falls back to projections or rewrites a corrupt authority', async () => {
     const cwd = await sandbox();

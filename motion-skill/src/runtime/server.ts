@@ -69,7 +69,7 @@ export async function startPreviewServer({ port, stateDir, host = '127.0.0.1', p
   const clients = new Set<ServerResponse>();
   const runtimeRoot = path.dirname(fileURLToPath(import.meta.url));
   const { createServer: createViteServer } = await import('vite');
-  const vite = await createViteServer({ root: runtimeRoot, server: { middlewareMode: true }, appType: 'spa' });
+  const vite = await createViteServer({ root: runtimeRoot, server: { middlewareMode: true }, appType: 'spa', logLevel: 'silent' });
 
   const broadcast = (scene: Scene) => {
     const data = `event: revision\ndata: ${JSON.stringify(scene)}\n\n`;

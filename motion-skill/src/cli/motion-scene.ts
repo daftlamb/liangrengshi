@@ -14,6 +14,9 @@ import { estimateSceneCost, validateScene } from '../model/validate';
 import { startPreviewServer } from '../runtime/server';
 import { analyzeOpinion, composeOpinionCard } from '../opinion/compose';
 import { composeDiagramCard, diagramDirectionValues, type DiagramDirection, type DiagramDirectionInput } from '../opinion/diagram';
+import { composeChart, chooseAvailableChartKind, type ChartPreference } from '../data/chart';
+import { parseCsv } from '../data/csv';
+import { exportLivePhoto } from '../export/live-photo';
 
 type Args = { command: string; options: Map<string, string[]>; help: boolean };
 type State = { current: Scene; history: Scene[] };
@@ -24,6 +27,8 @@ const schemas: Record<string, { required?: string[]; repeatable?: string[]; opti
   undo: { options: ['state-dir'] }, status: { options: ['state-dir'] }, serve: { options: ['state-dir', 'port'] },
   opinion: { options: ['text', 'seed', 'state-dir'], required: ['text'] },
   diagram: { options: ['text', 'seed', 'state-dir', 'composition', 'palette', 'motion', 'typography', 'background'], required: ['text'] },
+  csv: { options: ['file', 'chart', 'seed', 'state-dir', 'export', 'out', 'fps', 'platform', 'dry-run', 'package'], required: ['file'] },
+  export: { options: ['format', 'out', 'state-dir', 'fps', 'platform', 'dry-run', 'package'], required: ['format', 'out'] },
   '__serve-child': { options: ['state-dir', 'port', 'identity', 'session'], required: ['state-dir', 'port', 'identity', 'session'] },
 };
 class CliError extends Error { constructor(message: string, readonly code = 'INVALID_ARGUMENT') { super(message); } }
@@ -52,10 +57,17 @@ function parse(argv: string[]): Args {
   }
   if (!help) for (const name of schema.required ?? []) if (!options.has(name)) throw new CliError(`Missing required option: --${name}`);
   const file = options.get('file')?.[0];
-  if (file && path.extname(file).toLowerCase() !== '.json') throw new CliError('--file must use the .json extension');
+  if (file) {
+    const extension = path.extname(file).toLowerCase();
+    const expected = command === 'csv' ? '.csv' : '.json';
+    if (extension !== expected) throw new CliError(`--file must use the ${expected} extension`);
+  }
   for (const preserve of options.get('preserve') ?? []) if (!['layout', 'content', 'palette', 'timing', 'motion'].includes(preserve)) throw new CliError(`Invalid --preserve value: ${preserve}`);
   if (options.has('seed')) integer(options.get('seed')![0], '--seed', 0, 0xffffffff);
   if (options.has('port')) integer(options.get('port')![0], '--port', 0, 65535);
+  if (options.has('fps')) integer(options.get('fps')![0], '--fps', 1, 60);
+  if (options.has('dry-run')) booleanOption(options.get('dry-run')![0], '--dry-run', false);
+  if (options.has('package')) booleanOption(options.get('package')![0], '--package', true);
   return { command, options, help };
 }
 
@@ -73,6 +85,15 @@ function diagramDirectionFor(args: Args): DiagramDirectionInput {
     typography: choice(one(args, 'typography'), '--typography', diagramDirectionValues.typography) as DiagramDirection['typography'] | undefined,
     background: choice(one(args, 'background'), '--background', diagramDirectionValues.background) as DiagramDirection['background'] | undefined,
   };
+}
+function csvChartPreferenceFor(args: Args): ChartPreference {
+  return choice(one(args, 'chart'), '--chart', ['auto', 'bar', 'donut', 'line', 'ranking-bar'] as const) ?? 'auto';
+}
+function booleanOption(value: string | undefined, name: string, fallback: boolean) {
+  if (value === undefined) return fallback;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new CliError(`${name} must be true or false`);
 }
 function integer(value: string, name: string, min: number, max: number) {
   if (!/^(?:0|[1-9]\d*)$/.test(value)) throw new CliError(`${name} must be an integer`);
@@ -217,6 +238,26 @@ async function main() {
     const projectionWarnings = await persist(dir, scene, [scene]);
     return { ok: true, revision: 0, relation: analysis.relation, emphasis: analysis.emphasis, direction: { composition: direction.composition ?? 'auto', palette: direction.palette ?? 'default', motion: direction.motion ?? 'natural', typography: direction.typography ?? 'sans', background: direction.background ?? 'none' }, warnings: [...warningsFor(scene), ...projectionWarnings] };
   }
+  if (args.command === 'csv') {
+    const seed = integer(one(args, 'seed', '1')!, '--seed', 0, 0xffffffff);
+    const chartPreference = csvChartPreferenceFor(args);
+    const dataset = parseCsv(await readFile(path.resolve(one(args, 'file')!), 'utf8'));
+    const renderedChart = chooseAvailableChartKind(dataset, chartPreference);
+    const scene = composeChart(dataset, seed, chartPreference);
+    const projectionWarnings = await persist(dir, scene, [scene]);
+    const exportFormat = choice(one(args, 'export'), '--export', ['live-photo'] as const);
+    if (exportFormat && !one(args, 'out')) throw new CliError('Missing required option for CSV export: --out');
+    const exported = exportFormat === 'live-photo' ? await exportLivePhoto({
+      stateDir: dir,
+      scene,
+      outDir: path.resolve(one(args, 'out')!),
+      fps: integer(one(args, 'fps', '30')!, '--fps', 1, 60),
+      platform: choice(one(args, 'platform'), '--platform', ['xiaohongshu', 'wechat'] as const) ?? 'xiaohongshu',
+      dryRun: booleanOption(one(args, 'dry-run'), '--dry-run', false),
+      packageLivePhoto: booleanOption(one(args, 'package'), '--package', true),
+    }) : undefined;
+    return { ok: true, revision: 0, chart: dataset.chart, renderedChart, warnings: [...warningsFor(scene), ...projectionWarnings], ...(exported ? { export: exported } : {}) };
+  }
   if (args.command === 'init') {
     const seed = integer(one(args, 'seed', '1')!, '--seed', 0, 0xffffffff); const scene = createDefaultScene(one(args, 'name', 'Untitled')!, seed);
     const projectionWarnings = await persist(dir, scene, [scene]); return { ok: true, revision: scene.metadata.revision, warnings: [...warningsFor(scene), ...projectionWarnings] };
@@ -226,6 +267,21 @@ async function main() {
     if (!result.valid) throw new Error(result.errors.join('; ')); return { ok: true, valid: true, revision: scene.metadata.revision, warnings: warningsFor(scene) };
   }
   const state = await loadState(dir);
+  if (args.command === 'export') {
+    const format = choice(one(args, 'format'), '--format', ['live-photo'] as const);
+    if (format !== 'live-photo') throw new CliError('Invalid --format value: live-photo');
+    const result = validateScene(state.current);
+    if (!result.valid) throw new Error(result.errors.join('; '));
+    return exportLivePhoto({
+      stateDir: dir,
+      scene: state.current,
+      outDir: path.resolve(one(args, 'out')!),
+      fps: integer(one(args, 'fps', '30')!, '--fps', 1, 60),
+      platform: choice(one(args, 'platform'), '--platform', ['xiaohongshu', 'wechat'] as const) ?? 'xiaohongshu',
+      dryRun: booleanOption(one(args, 'dry-run'), '--dry-run', false),
+      packageLivePhoto: booleanOption(one(args, 'package'), '--package', true),
+    });
+  }
   if (args.command === 'status') { const result = validateScene(state.current); return { ok: true, valid: result.valid, revision: state.current.metadata.revision, warnings: warningsFor(state.current), errors: result.errors }; }
   const store = new SceneStore(state.current); let scene: Scene;
   if (args.command === 'replace') scene = store.replace(await readJson<Scene>(path.resolve(one(args, 'file')!)));

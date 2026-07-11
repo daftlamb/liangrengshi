@@ -25,6 +25,14 @@ describe('evaluateScene channel composition', () => {
     expect(item.type === 'text' && item.fill).not.toBe('#ff0000');
   });
 
+  it('counts numeric text content from zero while preserving suffixes', () => {
+    const base = sceneFor({ id: 'value', type: 'text', text: '36%', fill: '#111111' }, ['count']);
+    base.behaviors = [{ id: 'wave', type: 'ramp', delay: .2, duration: .8, cycle: 3 }];
+    expect(evaluateScene(base, { ...frame, time: .1 })[0]).toMatchObject({ content: '0%' });
+    expect(evaluateScene(base, { ...frame, time: .6 })[0]).toMatchObject({ content: '18%' });
+    expect(evaluateScene(base, { ...frame, time: 1.2 })[0]).toMatchObject({ content: '36%' });
+  });
+
   it('interpolates shorthand hex colors numerically and deterministically', () => {
     const [item] = evaluateScene(sceneFor({ id:'text', type:'text', text:'A', fill:'#f00' }, ['color']), frame);
     expect(item.type === 'text' && item.fill).toBe('#00ffff');
@@ -33,6 +41,15 @@ describe('evaluateScene channel composition', () => {
   it('composes rectangle geometry additively and clamps it nonnegative', () => {
     const [item] = evaluateScene(sceneFor({ id: 'rect', type: 'rectangle', width: 10, height: 20, cornerRadius: 3 }, ['width', 'height', 'cornerRadius']), frame);
     expect(item).toMatchObject({ width: 11, height: 21, cornerRadius: 4 });
+  });
+
+  it('grows rectangles upward from zero height without changing additive height semantics', () => {
+    const base = sceneFor({ id: 'rect', type: 'rectangle', origin: 'bottom-center', width: 10, height: 80 }, ['growY']);
+    base.behaviors = [{ id: 'wave', type: 'ramp', delay: .4, duration: .8, cycle: 3 }];
+    expect(evaluateScene(base, { ...frame, time: .2 })[0]).toMatchObject({ height: 0 });
+    expect(evaluateScene(base, { ...frame, time: .8 })[0]).toMatchObject({ type: 'rectangle', height: expect.closeTo(40) });
+    expect(evaluateScene(base, { ...frame, time: 1.4 })[0]).toMatchObject({ height: 80 });
+    expect(evaluateScene(base, { ...frame, time: 3.2 })[0]).toMatchObject({ height: 0 });
   });
 
   it('composes path progress additively and clamps it to zero through one', () => {
@@ -71,5 +88,12 @@ describe('evaluateBehavior', () => {
       const far=evaluateBehavior(behavior({id:type,type,targetElementId:'t',strength:1e9}),context(0,0,{target:{x:1e9,y:0},delta:1e9}));
       expect(Number.isFinite(near.x)).toBe(true); expect(Math.hypot(far.x,far.y)).toBeLessThanOrEqual(100);
     }
+  });
+  it('uses a shared cycle for delayed ramp sequences', () => {
+    const r=behavior({id:'r',type:'ramp',delay:.6,duration:.6,hold:2,cycle:4});
+    expect(evaluateBehavior(r,context(.4)).value).toBe(-1);
+    expect(evaluateBehavior(r,context(.9)).value).toBeCloseTo(-.5);
+    expect(evaluateBehavior(r,context(1.3)).value).toBe(0);
+    expect(evaluateBehavior(r,context(4.4)).value).toBe(-1);
   });
 });
