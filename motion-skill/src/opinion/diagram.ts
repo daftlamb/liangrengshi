@@ -8,7 +8,7 @@ const titleLines = (text: string) => text.length > 14 ? `${text.slice(0, 10)}\n$
 const arrowPoints = [{ x: 0, y: 0 }, { x: -20, y: -12 }, { x: -20, y: 12 }];
 
 export const diagramDirectionValues = {
-  composition: ['auto', 'causal', 'contrast', 'converge', 'system'] as const,
+  composition: ['auto', 'causal', 'contrast', 'converge', 'system', 'timeline'] as const,
   palette: ['default', 'mono', 'signal-red', 'electric-blue', 'warm-paper'] as const,
   motion: ['calm', 'natural', 'pronounced', 'quick', 'still-first'] as const,
   typography: ['sans', 'editorial-serif', 'mixed', 'brand'] as const,
@@ -65,7 +65,20 @@ export function composeDiagramCard(input: { text: string; seed: number; directio
   ];
   const animation: Scene['animation'] = [];
 
-  if (cause.length === 2 && effect) {
+  if (relation === 'timeline') {
+    const stages = input.text.split(/[、，,→]/u).map(part => part.replace(/构成.*$/u, '').trim()).filter(Boolean).slice(0, 3);
+    const labels = [...stages, '完成', '完成'].slice(0, 3);
+    const xs = [220, 450, 680];
+    labels.forEach((label, index) => elements.push(
+      { id: `timeline-node-${index}`, type: 'circle', x: xs[index]!, y: 620, radius: index === 1 ? 82 : 68, fill: index === 1 ? colors.accent : colors.ink },
+      { id: `timeline-label-${index}`, type: 'text', text: label, x: xs[index]!, y: 632, fill: colors.background, fontFamily, fontSize: 28 },
+    ));
+    elements.push(
+      { id: 'timeline-edge-0', type: 'line', x: 288, y: 620, x2: 368, y2: 620, stroke: colors.accent, strokeWidth: 4 },
+      { id: 'timeline-edge-1', type: 'line', x: 532, y: 620, x2: 612, y2: 620, stroke: colors.accent, strokeWidth: 4 },
+    );
+    animation.push({ id: 'timeline-response', elementId: 'timeline-node-1', behaviorId: 'result-pulse', falloffIds: [], channels: ['scale'], role: 'primary' });
+  } else if (cause.length === 2 && effect) {
     const sourceA = { x: 280, y: 490, radius: 120 };
     const sourceB = { x: 620, y: 490, radius: 120 };
     const result = { x: 450, y: 875, radius: 132 };

@@ -48,4 +48,10 @@ describe('diagram cards', () => {
     expect(dots.elements.find(element => element.id === 'background-dot')).toMatchObject({ type: 'circle', radius: 3, fill: '#C9C7C0' });
     expect(grid.elements.filter(element => element.id.startsWith('background-grid-'))).toHaveLength(25);
   });
+
+  test('renders a three-stage timeline when requested', () => {
+    const scene = composeDiagramCard({ text: '冷启动、增长、复购构成增长路径', seed: 13, direction: { composition: 'timeline' } as never });
+    expect(scene.elements.filter(element => element.id.startsWith('timeline-node-'))).toHaveLength(3);
+    expect(scene.elements.filter(element => element.id.startsWith('timeline-edge-'))).toHaveLength(2);
+  });
 });
