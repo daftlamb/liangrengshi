@@ -29,6 +29,15 @@ describe('motion-scene CLI', () => {
     expect(scene.elements.find((element: { id: string }) => element.id === 'statement').text).toContain('真正的壁垒');
   });
 
+  it('creates a relationship diagram card from one viewpoint', async () => {
+    const cwd = await sandbox();
+    const result = run(cwd, ['diagram', '--text', '真正的壁垒不是模型能力而是进入日常工作流', '--seed', '8']);
+    expect(result.status).toBe(0);
+    expect(result.json).toMatchObject({ ok: true, revision: 0, relation: 'contrast' });
+    const scene = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
+    expect(scene.metadata.name).toContain('观点图解卡');
+  });
+
   it('supports global and command help without touching state or requiring files to exist', async () => {
     const cwd = await sandbox();
     const global = run(cwd, ['--help']);

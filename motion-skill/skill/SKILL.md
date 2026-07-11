@@ -15,6 +15,10 @@ For a single 12–40 Chinese-character viewpoint, read [opinion-cards.md](refere
 
 `npm exec -- vite-node src/cli/motion-scene.ts opinion --text "真正的壁垒不是模型能力而是进入日常工作流" --seed 1 --state-dir .motion-scene`
 
+When the viewpoint needs an infographic-like explanation—contrast, causal flow, convergence, or a simple system—use a relationship diagram instead. It creates labeled nodes, an edge, and restrained motion from the same sentence:
+
+`npm exec -- vite-node src/cli/motion-scene.ts diagram --text "真正的壁垒不是模型能力而是进入日常工作流" --seed 1 --state-dir .motion-scene`
+
 ## Workflow
 
 Run every CLI example from the `motion-skill` package directory. The documented `npm exec -- vite-node src/cli/motion-scene.ts` runner is package-local and real. Keep one state directory for the conversation and one temporary working directory for candidate JSON and patches.
