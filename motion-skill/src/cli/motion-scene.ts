@@ -12,6 +12,7 @@ import { SceneStore, type PreserveConstraint } from '../model/patch-store';
 import type { Scene } from '../model/schema';
 import { estimateSceneCost, validateScene } from '../model/validate';
 import { startPreviewServer } from '../runtime/server';
+import { analyzeOpinion, composeOpinionCard } from '../opinion/compose';
 
 type Args = { command: string; options: Map<string, string[]>; help: boolean };
 type State = { current: Scene; history: Scene[] };
@@ -20,6 +21,7 @@ const schemas: Record<string, { required?: string[]; repeatable?: string[]; opti
   init: { options: ['name', 'seed', 'state-dir'] }, validate: { options: ['file', 'state-dir'] },
   replace: { options: ['file', 'state-dir'], required: ['file'] }, patch: { options: ['file', 'preserve', 'state-dir'], required: ['file'], repeatable: ['preserve'] },
   undo: { options: ['state-dir'] }, status: { options: ['state-dir'] }, serve: { options: ['state-dir', 'port'] },
+  opinion: { options: ['text', 'seed', 'state-dir'], required: ['text'] },
   '__serve-child': { options: ['state-dir', 'port', 'identity', 'session'], required: ['state-dir', 'port', 'identity', 'session'] },
 };
 class CliError extends Error { constructor(message: string, readonly code = 'INVALID_ARGUMENT') { super(message); } }
@@ -182,6 +184,14 @@ async function main() {
     await new Promise<void>(() => undefined); return;
   }
   if (args.command === 'serve') return serve(args);
+  if (args.command === 'opinion') {
+    const seed = integer(one(args, 'seed', '1')!, '--seed', 0, 0xffffffff);
+    const text = one(args, 'text')!;
+    const analysis = analyzeOpinion(text);
+    const scene = composeOpinionCard({ text, seed });
+    const projectionWarnings = await persist(dir, scene, [scene]);
+    return { ok: true, revision: 0, relation: analysis.relation, emphasis: analysis.emphasis, warnings: [...warningsFor(scene), ...projectionWarnings] };
+  }
   if (args.command === 'init') {
     const seed = integer(one(args, 'seed', '1')!, '--seed', 0, 0xffffffff); const scene = createDefaultScene(one(args, 'name', 'Untitled')!, seed);
     const projectionWarnings = await persist(dir, scene, [scene]); return { ok: true, revision: scene.metadata.revision, warnings: [...warningsFor(scene), ...projectionWarnings] };

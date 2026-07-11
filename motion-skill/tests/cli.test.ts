@@ -19,6 +19,16 @@ async function sandbox() { return mkdtemp(path.join(tmpdir(), 'motion-cli-')); }
 afterEach(() => { for (const pid of servers.splice(0)) try { process.kill(pid); } catch { /* already stopped */ } });
 
 describe('motion-scene CLI', () => {
+  it('creates a modernist opinion card directly from one viewpoint', async () => {
+    const cwd = await sandbox();
+    const result = run(cwd, ['opinion', '--text', '真正的壁垒不是模型能力而是进入日常工作流', '--seed', '77']);
+    expect(result.status).toBe(0);
+    expect(result.json).toMatchObject({ ok: true, revision: 0, relation: 'contrast', emphasis: ['模型能力', '日常工作流'] });
+    const scene = JSON.parse(await readFile(path.join(cwd, '.motion-scene/current.json'), 'utf8'));
+    expect(scene.composition).toMatchObject({ width: 900, height: 1200, duration: 5 });
+    expect(scene.elements.find((element: { id: string }) => element.id === 'statement').text).toContain('真正的壁垒');
+  });
+
   it('supports global and command help without touching state or requiring files to exist', async () => {
     const cwd = await sandbox();
     const global = run(cwd, ['--help']);

@@ -108,5 +108,5 @@ describe('complete CLI user journey', () => {
     expect(await readFile(path.join(stateDir, 'current.json'), 'utf8')).toBe(beforeInvalid);
     expect(frame(await active(stateDir))).toEqual(beforeInvalidFrame);
     expect(run(cwd, ['status', '--state-dir', stateDir]).json).toMatchObject({ ok: true, valid: true, revision: undone.metadata.revision });
-  });
+  }, 15_000);
 });

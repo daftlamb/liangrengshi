@@ -1,15 +1,19 @@
 ---
 name: motion-scene
-description: Turn natural-language requests into browser-previewed motion graphics and animation for non-coders. Use for shapes, text, repeated layouts, looping movement, follow/attract/repel interactions, and conversational visual refinements.
+description: Use when a user wants a natural-language motion graphic, a one-sentence modernist opinion card, a Xiaohongshu dynamic content card, text/geometry/particle motion, a browser preview, or Live Photo packaging from rendered JPG/MOV assets.
 ---
 
 # Motion Scene
 
 Turn the user's words into a scene, keep the browser preview as the primary artifact, and describe results in ordinary language. Never ask the user to edit JSON or run commands.
 
-This renderer supports 2D shapes, text, repeated layouts, procedural motion, falloffs, and simple interaction. It does **not** support export, 3D, imported images, audio, timeline editing, or user-supplied code.
+This renderer supports 2D shapes, text, repeated layouts, procedural motion, falloffs, simple interaction, and modernist opinion cards. It does **not** support 3D, imported images, audio, timeline editing, or user-supplied code.
 
 Read [scene-schema.md](references/scene-schema.md) before authoring JSON. Use [motion-language.md](references/motion-language.md) to interpret phrasing and [visual-quality.md](references/visual-quality.md) for defaults and review.
+
+For a single 12–40 Chinese-character viewpoint, read [opinion-cards.md](references/opinion-cards.md) and use the dedicated generator instead of hand-authoring a generic scene:
+
+`npm exec -- vite-node src/cli/motion-scene.ts opinion --text "真正的壁垒不是模型能力而是进入日常工作流" --seed 1 --state-dir .motion-scene`
 
 ## Workflow
 
@@ -54,6 +58,14 @@ motion-skill/skill/scripts/preview.sh --state-dir .motion-scene --port 0
 7. Review the preview for hierarchy, crop, legibility, loop quality, and excessive motion. Make only corrective patches that are clearly necessary; validate each candidate first.
 
 8. Report what changed, the interpretation made for subjective wording, whether an existing preview was reused, and any warning or budget reduction. Keep the response visual and conversational rather than discussing JSON implementation.
+
+## Live Photo packaging
+
+Treat the still card as the primary design. After an external renderer has produced a readable key JPG and a five-second H.264 MOV for Xiaohongshu, package them without duplicating Apple metadata logic:
+
+`python3 skill/scripts/package-live-photo.py output/key.jpg output/motion.mov --platform xiaohongshu`
+
+This adapter packages existing assets only; never claim it rendered the JPG/MOV. Keep generated files in a task/output directory, not in the skill root.
 
 ## JSON Patch rules
 

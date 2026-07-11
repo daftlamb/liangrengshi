@@ -11,13 +11,13 @@ describe('motion skill contract', () => {
     const text = await readFile(skillPath, 'utf8');
     const match = text.match(/^---\n([\s\S]*?)\n---/);
     expect(match?.[1]).toMatch(/^name: motion-scene$/m);
-    expect(match?.[1]).toMatch(/^description: .*natural-language.*motion.*animation/im);
+    expect(match?.[1]).toMatch(/^description: .*natural-language.*motion.*opinion card/im);
   });
 
   it('references existing focused guidance', async () => {
     const text = await readFile(skillPath, 'utf8');
     const links = [...text.matchAll(/\]\((references\/[^)]+)\)/g)].map(([, link]) => link);
-    expect(links.sort()).toEqual(['references/motion-language.md', 'references/scene-schema.md', 'references/visual-quality.md']);
+    expect(links.sort()).toEqual(['references/motion-language.md', 'references/opinion-cards.md', 'references/scene-schema.md', 'references/visual-quality.md']);
     await Promise.all(links.map(link => access(path.join(root, 'skill', link))));
   });
 
